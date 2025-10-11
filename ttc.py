@@ -36,7 +36,7 @@ def banner():
     print("\033[1;33m")
     print_slow("═════════════ THÔNG TIN LIÊN HỆ ═════════════", 0.002)
     print("\033[0m")
-    print("\033[1;31m Zalo:     \033[0m", end=""); print_slow("https://zalo.me/", 0.002)
+    print("\033[1;31m Zalo:     \033[0m", end=""); print_slow("https://zalo.me/0854533557", 0.002)
     print("\033[1;31m Tiktok:  \033[0m", end=""); print_slow("https://www.tiktok.com/@tk_a_hplus", 0.002)
     print("\033[1;31m facebook:  \033[0m", end=""); print_slow("https://www.facebook.com/tkhanh223", 0.002)
     print("\033[1;31m" + "─" * 50 + "\033[0m")
@@ -2306,4 +2306,5 @@ def CheckKey():
 
 
 if __name__ == "__main__":
+
     Main()
