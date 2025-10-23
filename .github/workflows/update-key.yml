@@ -1,0 +1,33 @@
+name: Update Key File
+
+on:
+  repository_dispatch:
+    types: [update-key]   # Lắng nghe event từ trang web gửi tới
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Update key.json
+        run: |
+          echo "📥 Nhận key mới từ event..."
+          echo "${{ github.event.client_payload.key }}" > newkey.txt
+          KEY=$(cat newkey.txt)
+
+          # Nếu đã có key.json → thêm key mới vào cuối
+          if [ -f key.json ]; then
+            jq --arg k "$KEY" '. + [{"key":$k,"date":"'"$(date '+%Y-%m-%d %H:%M:%S')"'"}]' key.json > temp.json && mv temp.json key.json
+          else
+            echo "[{\"key\":\"$KEY\",\"date\":\"$(date '+%Y-%m-%d %H:%M:%S')\"}]" > key.json
+          fi
+
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add key.json
+          git commit -m "🔑 Update key.json tự động"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
