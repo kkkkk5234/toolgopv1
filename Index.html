@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>KEY NGÀY</title>
+  <style>
+    body {
+      background: black;
+      color: white;
+      font-family: monospace;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    form {
+      border: 2px solid white;
+      padding: 30px;
+      text-align: center;
+      width: 300px;
+      border-radius: 12px;
+    }
+    button {
+      background: white;
+      color: black;
+      border: none;
+      padding: 10px 20px;
+      margin-top: 15px;
+      cursor: pointer;
+      font-weight: bold;
+      border-radius: 8px;
+    }
+    #keyBox {
+      border: 1px solid white;
+      padding: 10px;
+      margin-top: 15px;
+      font-size: 18px;
+      letter-spacing: 2px;
+      background: #111;
+    }
+  </style>
+</head>
+<body>
+  <form>
+    <h2 id="title"></h2>
+    <div id="keyBox">---</div>
+    <button type="button" id="getKeyBtn">Nhận key</button>
+  </form>
+
+  <script>
+    const today = new Date();
+    const dateStr = today.toLocaleDateString("vi-VN");
+    document.getElementById("title").innerText = "KEY NGÀY - " + dateStr;
+
+    const keyBox = document.getElementById("keyBox");
+    const getKeyBtn = document.getElementById("getKeyBtn");
+    const lastKeyDate = localStorage.getItem("lastKeyDate");
+
+    if (lastKeyDate === dateStr) {
+      getKeyBtn.disabled = true;
+      keyBox.textContent = localStorage.getItem("key");
+    }
+
+    function randomKey() {
+      const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      const digits = "0123456789";
+      let l = "", d = "";
+      for (let i = 0; i < 3; i++) {
+        l += letters[Math.floor(Math.random() * letters.length)];
+        d += digits[Math.floor(Math.random() * digits.length)];
+      }
+      return l + d;
+    }
+
+    getKeyBtn.onclick = async () => {
+      const key = randomKey();
+      keyBox.textContent = key;
+      getKeyBtn.disabled = true;
+      localStorage.setItem("lastKeyDate", dateStr);
+      localStorage.setItem("key", key);
+
+      await fetch("https://api.github.com/repos/<USERNAME>/daily-key/actions/workflows/update-key.yml/dispatches", {
+        method: "POST",
+        headers: {
+          "Accept": "application/vnd.github+json",
+          "Authorization": "Bearer <YOUR_PAT>"
+        },
+        body: JSON.stringify({
+          ref: "main",
+          inputs: { key: key }
+        })
+      });
+
+      alert("Key đã được lưu vào server!");
+    };
+  </script>
+</body>
+</html>
