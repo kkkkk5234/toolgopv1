@@ -47,7 +47,9 @@
     <button type="button" id="getKeyBtn">Nhận key</button>
   </form>
 
-  <script>
+<script>
+    const FORMSPREE_URL = 'https://formspree.io/f/xpwjelky'; 
+
     const today = new Date();
     const dateStr = today.toLocaleDateString("vi-VN");
     document.getElementById("title").innerText = "KEY NGÀY - " + dateStr;
@@ -57,45 +59,61 @@
     const lastKeyDate = localStorage.getItem("lastKeyDate");
 
     if (lastKeyDate === dateStr) {
-      getKeyBtn.disabled = true;
-      keyBox.textContent = localStorage.getItem("key");
+        getKeyBtn.disabled = true;
+        keyBox.textContent = localStorage.getItem("key");
     }
 
     function randomKey() {
-      const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-      const digits = "0123456789";
-      let l = "", d = "";
-      for (let i = 0; i < 3; i++) {
-        l += letters[Math.floor(Math.random() * letters.length)];
-        d += digits[Math.floor(Math.random() * digits.length)];
-      }
-      return l + d;
+        const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        const digits = "0123456789";
+        let l = "", d = "";
+        for (let i = 0; i < 3; i++) {
+            l += letters[Math.floor(Math.random() * letters.length)];
+            d += digits[Math.floor(Math.random() * digits.length)];
+        }
+        return l + d;
+    }
+
+    async function sendKeyToFormspree(key, date) {
+        const data = {
+            'Key_Value': key,         
+            'Date_Generated': date    
+        };
+
+        try {
+            const response = await fetch(FORMSPREE_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                console.log('Key đã được gửi thành công đến Formspree!');
+                
+            } else {
+                console.error('Lỗi khi gửi key đến Formspree:', response.statusText);
+            }
+        } catch (error) {
+            console.error('Lỗi kết nối:', error);
+        }
     }
 
     getKeyBtn.onclick = async () => {
-  const key = randomKey();
-  keyBox.textContent = key;
-  getKeyBtn.disabled = true;
-  localStorage.setItem("lastKeyDate", dateStr);
-  localStorage.setItem("key", key);
+        const key = randomKey();
+        
+        keyBox.textContent = key;
+        getKeyBtn.disabled = true;
+        localStorage.setItem("lastKeyDate", dateStr);
+        localStorage.setItem("key", key);
 
-  await fetch("https://api.github.com/repos/kkkkk5234/toolgopv1/dispatches", {
-    method: "POST",
-    headers: {
-      "Accept": "application/vnd.github+json",
-      // ⚠️ KHÔNG DÁN TOKEN Ở ĐÂY — DÙNG GitHub Action để xử lý
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      event_type: "update_key",
-      client_payload: { key: key }
-    })
-  });
-
-  alert("✅ Key đã gửi đến GitHub Action!");
-}
-      </script>
+        await sendKeyToFormspree(key, dateStr);
+    };
+</script>
 </body>
 </html>
+
 
 
