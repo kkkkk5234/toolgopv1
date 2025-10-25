@@ -1,0 +1,27 @@
+name: Update Key JSON
+on:
+  workflow_dispatch:
+    inputs:
+      key:
+        description: 'New key'
+        required: true
+        type: string
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Update key.json
+        run: |
+          echo "{\"key\": \"${{ github.event.inputs.key }}\", \"date\": \"$(date '+%Y-%m-%d')\"}" > key.json
+
+      - name: Commit changes
+        run: |
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+          git add key.json
+          git commit -m "Update key.json"
+          git push
