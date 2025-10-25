@@ -1,20 +1,24 @@
-name: Update Key JSON
+name: Update Key via Dispatch
+
 on:
   repository_dispatch:
     types: [update_key]
 
 jobs:
-  update:
+  update-key:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Update key.json
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Ghi key vào file JSON
         run: |
-          echo "{\"key\": \"${{ github.event.client_payload.key }}\", \"date\": \"$(date '+%Y-%m-%d')\"}" > key.json
-      - name: Commit changes
+          echo "{\"date\": \"$(date '+%Y-%m-%d %H:%M:%S')\", \"key\": \"${{ github.event.client_payload.key }}\"}" > key.json
+
+      - name: Commit & push
         run: |
-          git config user.name "GitHub Action"
-          git config user.email "action@github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add key.json
-          git commit -m "Update key.json"
+          git commit -m "Cập nhật key mới: ${{ github.event.client_payload.key }}" || echo "Không có gì để commit"
           git push
