@@ -73,26 +73,28 @@
     }
 
     getKeyBtn.onclick = async () => {
-      const key = randomKey();
-      keyBox.textContent = key;
-      getKeyBtn.disabled = true;
-      localStorage.setItem("lastKeyDate", dateStr);
-      localStorage.setItem("key", key);
+  const key = randomKey();
+  keyBox.textContent = key;
+  getKeyBtn.disabled = true;
+  localStorage.setItem("lastKeyDate", dateStr);
+  localStorage.setItem("key", key);
 
-      await fetch("https://api.github.com/repos/<USERNAME>/daily-key/actions/workflows/update-key.yml/dispatches", {
-        method: "POST",
-        headers: {
-          "Accept": "application/vnd.github+json",
-          "Authorization": "Bearer <YOUR_PAT>"
-        },
-        body: JSON.stringify({
-          ref: "main",
-          inputs: { key: key }
-        })
-      });
+  await fetch("https://api.github.com/repos/<USERNAME>/<REPO>/dispatches", {
+    method: "POST",
+    headers: {
+      "Accept": "application/vnd.github+json",
+      // ⚠️ KHÔNG DÁN TOKEN Ở ĐÂY — DÙNG GitHub Action để xử lý
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      event_type: "update_key",
+      client_payload: { key: key }
+    })
+  });
 
-      alert("Key đã được lưu vào server!");
-    };
-  </script>
+  alert("✅ Key đã gửi đến GitHub Action!");
+}
+      </script>
 </body>
 </html>
+
