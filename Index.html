@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>KEY NGÀY</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <style>
     body {
       background: black;
@@ -12,12 +13,13 @@
       justify-content: center;
       align-items: center;
       height: 100vh;
+      margin: 0;
     }
-    form {
+    .card {
       border: 2px solid white;
-      padding: 30px;
+      padding: 24px;
       text-align: center;
-      width: 300px;
+      width: 320px;
       border-radius: 12px;
     }
     button {
@@ -25,7 +27,7 @@
       color: black;
       border: none;
       padding: 10px 20px;
-      margin-top: 15px;
+      margin-top: 12px;
       cursor: pointer;
       font-weight: bold;
       border-radius: 8px;
@@ -38,84 +40,162 @@
       letter-spacing: 2px;
       background: #111;
     }
+    input {
+      padding: 8px;
+      width: 80%;
+      border-radius: 6px;
+      border: 1px solid white;
+      background: #111;
+      color: white;
+      margin-top: 10px;
+      text-align: center;
+    }
+    .muted { color: #ccc; font-size: 12px; margin-top:8px; }
   </style>
 </head>
 <body>
-  <form>
+
+  <div class="card" id="passwordCard">
+    <h2>Nhập mật khẩu để nhận key</h2>
+    <input type="password" id="passwordInput" placeholder="Mật khẩu">
+    <br>
+    <button id="submitPassword">Xác nhận</button>
+    <div id="passwordMsg" style="color:#ff7b7b;margin-top:8px;"></div>
+    <div class="muted" id="fetchStatus">Đang tải key từ server</div>
+  </div>
+
+  <div class="card" id="keyCard" style="display:none;">
     <h2 id="title"></h2>
     <div id="keyBox">---</div>
     <button type="button" id="getKeyBtn">Nhận key</button>
-  </form>
+    <div class="muted" style="margin-top:8px">Key chỉ có tác dụng trong 24h</div>
+  </div>
 
 <script>
-    const FORMSPREE_URL = 'https://formspree.io/f/xpwjelky'; 
+const MK_JSON_URL = 'https://raw.githubusercontent.com/kkkkk5234/toolgopv1/main/key.json'; 
+const FORMSPREE_URL = 'https://formspree.io/f/xpwjelky'; 
+  
+const passwordCard = document.getElementById('passwordCard');
+const passwordInput = document.getElementById('passwordInput');
+const submitPassword = document.getElementById('submitPassword');
+const passwordMsg = document.getElementById('passwordMsg');
+const fetchStatus = document.getElementById('fetchStatus');
 
-    const today = new Date();
-    const dateStr = today.toLocaleDateString("vi-VN");
-    document.getElementById("title").innerText = "KEY NGÀY - " + dateStr;
+const keyCard = document.getElementById('keyCard');
+const titleEl = document.getElementById('title');
+const keyBox = document.getElementById('keyBox');
+const getKeyBtn = document.getElementById('getKeyBtn');
 
-    const keyBox = document.getElementById("keyBox");
-    const getKeyBtn = document.getElementById("getKeyBtn");
-    const lastKeyDate = localStorage.getItem("lastKeyDate");
+const today = new Date();
+const dateStr = today.toLocaleDateString("vi-VN");
+titleEl.innerText = "KEY NGÀY - " + dateStr;
 
-    if (lastKeyDate === dateStr) {
-        getKeyBtn.disabled = true;
-        keyBox.textContent = localStorage.getItem("key");
+const lastKeyDate = localStorage.getItem("lastKeyDate");
+if (lastKeyDate === dateStr) {
+  getKeyBtn.disabled = true;
+  keyBox.textContent = localStorage.getItem("key");
+}
+
+let currentMk = null;
+let mkLoaded = false;
+
+async function loadMkJson(){
+  fetchStatus.textContent = 'Đang kiểm tra key';
+  try {
+    const res = await fetch(MK_JSON_URL, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const j = await res.json();
+
+    currentMk = j.mk || j.Mk || j.MK || j['Mk:'] || j['mk:'] || null;
+
+    if (typeof currentMk === 'string') {
+      currentMk = currentMk.trim();
     }
-
-    function randomKey() {
-        const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        const digits = "0123456789";
-        let l = "", d = "";
-        for (let i = 0; i < 3; i++) {
-            l += letters[Math.floor(Math.random() * letters.length)];
-            d += digits[Math.floor(Math.random() * digits.length)];
-        }
-        return l + d;
+    if (!currentMk) {
+      fetchStatus.textContent = 'Mật khẩu sai';
+      mkLoaded = false;
+    } else {
+      fetchStatus.textContent = 'Mật khẩu đúng';
+      mkLoaded = true;
     }
+  } catch (err) {
+    console.error('Lỗi khi fetch :', err);
+    fetchStatus.textContent = 'Lỗi kết nối server: ' + (err.message || err);
+    mkLoaded = false;
+  }
+}
 
-    async function sendKeyToFormspree(key, date) {
-        const data = {
-            'Key_Value': key,         
-            'Date_Generated': date    
-        };
+loadMkJson();
 
-        try {
-            const response = await fetch(FORMSPREE_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
+function randomKey() {
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const digits = "0123456789";
+  let l = "", d = "";
+  for (let i = 0; i < 3; i++) {
+      l += letters[Math.floor(Math.random() * letters.length)];
+      d += digits[Math.floor(Math.random() * digits.length)];
+  }
+  return l + d;
+}
 
-            if (response.ok) {
-                console.log('Key đã được gửi thành công đến Formspree!');
-                
-            } else {
-                console.error('Lỗi khi gửi key đến Formspree:', response.statusText);
-            }
-        } catch (error) {
-            console.error('Lỗi kết nối:', error);
-        }
+async function sendKeyToFormspree(key, date) {
+  const data = { 'Key_Value': key, 'Date_Generated': date };
+  try {
+    const response = await fetch(FORMSPREE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (response.ok) {
+      console.log('Key đã được gửi về tool!');
+    } else {
+      console.error('Lỗi khi gửi key về tool:', response.statusText);
     }
+  } catch (error) {
+    console.error('Lỗi kết nối tool:', error);
+  }
+}
 
-    getKeyBtn.onclick = async () => {
-        const key = randomKey();
-        
-        keyBox.textContent = key;
-        getKeyBtn.disabled = true;
-        localStorage.setItem("lastKeyDate", dateStr);
-        localStorage.setItem("key", key);
+submitPassword.onclick = async () => {
+  const input = (passwordInput.value || '').trim();
+  passwordMsg.textContent = '';
 
-        await sendKeyToFormspree(key, dateStr);
-    };
+  if (!mkLoaded) {
+    fetchStatus.textContent = 'Gặp lỗi server đang được nhân viên kiểm tra lại...';
+    await loadMkJson();
+  }
+
+  if (!mkLoaded) {
+    passwordMsg.textContent = 'Không thể kết nối server';
+    return;
+  }
+
+  if (input === currentMk) {
+    passwordInput.value = '';
+    passwordCard.style.display = 'none';
+    keyCard.style.display = 'block';
+    sessionStorage.setItem('auth_ok', '1');
+  } else {
+    passwordMsg.textContent = 'Mật khẩu sai — không thể vào.';
+    await loadMkJson();
+  }
+};
+
+if (sessionStorage.getItem('auth_ok') === '1') {
+  passwordCard.style.display = 'none';
+  keyCard.style.display = 'block';
+}
+
+getKeyBtn.onclick = async () => {
+  const key = randomKey();
+  keyBox.textContent = key;
+  getKeyBtn.disabled = true;
+  localStorage.setItem("lastKeyDate", dateStr);
+  localStorage.setItem("key", key);
+  await sendKeyToFormspree(key, dateStr);
+};
 </script>
+
 </body>
+</html>>
 </html>
-
-
-
-
-
