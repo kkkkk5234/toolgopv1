@@ -126,9 +126,4 @@ WebDriverWait(driver, 300).until(
 )
 
 if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        pass
-
-    input("\nNhấn Enter để thoát...")
+    main()
