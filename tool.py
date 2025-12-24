@@ -74,8 +74,7 @@ end = '\033[0m'
 dev = "\033[1;39m[\033[1;31m\033[1;39m]\033[1;39m"
 
 def banner():
-
-    banner = f"""
+    print(f"""
 \033[1;32m ████████╗   ██╗ ██ ██╗   ██╗ █████╗ ███╗   ██╗██╗  ██╗
 \033[1;32m ╚══██╔══╝   ██║██╔╝██║   ██║██   ██╗████╗  ██║██║  ██║
 \033[1;32m    ██║      ████╔╝ ████████║███████║██╔██╗ ██║███████║
@@ -92,7 +91,7 @@ def banner():
 \033[1;97m║[\033[1;91m❣\033[1;97m]\033[1;97m Facebook\033[1;31m : \033[1;97m☞ \033[1;36mhttps://www.facebook.com/tkhanh223\033[1;31m♔ \033[1;97m☜ ║
 \033[97m╚═══════════════════════════════════════════════════════╝
 
-"""
+""")
     
 def random_name(length=8):
     return ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(length))
@@ -138,7 +137,9 @@ def extract_otp(text):
     return match.group(0) if match else None
 
 def main():
-    input("(Nhấn Enter để tiếp tục)")
+    os.system("cls" if os.name == "nt" else "clear")
+    banner()
+    input("Nhấn Enter để tiếp tục")
 
     domain = get_domains()
     email = f"{random_name()}@{domain}"
