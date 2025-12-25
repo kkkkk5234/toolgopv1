@@ -77,9 +77,9 @@ var u=typeof globalThis!=='undefined'?globalThis:typeof window!=='undefined'?win
 def main():
     banner()
 
-    url = input(f"[TK tool]{luc}Nhập link cần bypass: {end}").strip()
+    url = input(f"{do}[❣] {luc}Nhập link cần bypass: {end}").strip()
     if not url.startswith("http"):
-        print(f"[TK tool]{do}Link không hợp lệ!{end}")
+        print(f"{do}[❣] {do}Link không hợp lệ!{end}")
         return
 
     options = Options()
@@ -94,14 +94,14 @@ def main():
     time.sleep(3)
 
     driver.execute_script(JS_BYPASS)
-    print(f"[TK tool]{luc}Hãy xác thực CAPTCHA để tiếp tục bypass...{end}")
+    print(f"{do}[❣] {luc}Hãy xác thực CAPTCHA để tiếp tục bypass...{end}")
 
     old_url = driver.current_url
     WebDriverWait(driver, 300).until(
         lambda d: d.current_url != old_url
     )
 
-    print(f"[TK tool]{luc}Bypass hoàn tất!{end}")
+    print(f"{do}[❣] {luc}Bypass hoàn tất!{end}")
 
 # ================== RUN ==================
 if __name__ == "__main__":
