@@ -39,13 +39,13 @@ def banner():
 {luc}    ██║      ██║╚██╗██║   ██║██   ██║██║  ████║██║  ██║
 {luc}    ╚═╝      ╚═╝ ╚═╝╚═╝   ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝
 {trang}╔═════════════════════════════════════════════════╗
-{trang}║ Tool By: {luc}Shop T.Khanh{trang}       Version: {luc}1.0 {trang}║
+{trang}║ Tool By: {luc}Shop T.Khanh{trang}       Version: {luc}1.0 {trang}   ║
 {trang}╚═════════════════════════════════════════════════╝
 
 {trang}╔═══════════════════════════════════════════════════════╗
-{trang}║ Zalo    : {luc}http://zalo.me/0854533557{trang}               ║
-{trang}║ Tiktok  : {luc}@tk_a_h{trang}                              ║
-{trang}║ Facebook: {luc}fb.com/tkhanh223{trang}                     ║
+{trang}║ Zalo    : {luc}http://zalo.me/0854533557{trang}                   ║
+{trang}║ Tiktok  : {luc}@tk_a_h{trang}                                     ║
+{trang}║ Facebook: {luc}fb.com/tkhanh223{trang}                            ║
 {trang}╚═══════════════════════════════════════════════════════╝
 """)
 
