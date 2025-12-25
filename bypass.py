@@ -23,10 +23,29 @@ except:
 from pystyle import Colors
 
 # ================== MÀU SẮC ==================
-luc = "\033[1;32m"
-trang = "\033[97m"
+xnhac = "\033[1;36m"
+
 do = "\033[1;31m"
-end = "\033[0m"
+
+luc = "\033[1;32m"
+
+vang = "\033[1;33m"
+
+xduong = "\033[1;34m"
+
+hong = "\033[1;35m"
+
+trang = "\033[1;39m"
+
+whiteb = "\033[1;39m"
+
+red = "\033[0;31m"
+
+redb = "\033[1;31m"
+
+end = '\033[0m'
+
+dev = "\033[1;39m[\033[1;31m\033[1;39m]\033[1;39m"
 
 # ================== BANNER ==================
 def banner():
@@ -44,7 +63,7 @@ def banner():
 
 \033[97m╔═══════════════════════════════════════════════════════╗
 \033[1;97m║[\033[1;91m❣\033[1;97m]\033[1;97m Zalo\033[1;31m  : \033[1;97m☞ \033[1;36mhttp://zalo.me/0854533557\033[1;31m♔ \033[1;97m☜             ║
-\033[1;97m║[\033[1;91m❣\033[1;97m]\033[1;97m Tiktok\033[1;31m  : \033[1;97m☞ \033[1;36m@tk_a_h\033[1;31m♔ \033[1;97m☜                         ║
+\033[1;97m║[\033[1;91m❣\033[1;97m]\033[1;97m Tiktok\033[1;31m  : \033[1;97m☞ \033[1;36m@tk_a_h\033[1;31m♔ \033[1;97m☜                             ║
 \033[1;97m║[\033[1;91m❣\033[1;97m]\033[1;97m Facebook\033[1;31m : \033[1;97m☞ \033[1;36mhttps://www.facebook.com/tkhanh223\033[1;31m♔ \033[1;97m☜ ║
 \033[97m╚═══════════════════════════════════════════════════════╝
 """)
@@ -58,9 +77,9 @@ var u=typeof globalThis!=='undefined'?globalThis:typeof window!=='undefined'?win
 def main():
     banner()
 
-    url = input(f"{luc}Nhập link cần bypass: {end}").strip()
+    url = input(f"[TK tool]{luc}Nhập link cần bypass: {end}").strip()
     if not url.startswith("http"):
-        print(f"{do}Link không hợp lệ!{end}")
+        print(f"[TK tool]{do}Link không hợp lệ!{end}")
         return
 
     options = Options()
@@ -75,14 +94,14 @@ def main():
     time.sleep(3)
 
     driver.execute_script(JS_BYPASS)
-    print(f"{luc}Hãy xác thực CAPTCHA để tiếp tục bypass...{end}")
+    print(f"[TK tool]{luc}Hãy xác thực CAPTCHA để tiếp tục bypass...{end}")
 
     old_url = driver.current_url
     WebDriverWait(driver, 300).until(
         lambda d: d.current_url != old_url
     )
 
-    print(f"{luc}Bypass hoàn tất!{end}")
+    print(f"[TK tool]{luc}Bypass hoàn tất!{end}")
 
 # ================== RUN ==================
 if __name__ == "__main__":
