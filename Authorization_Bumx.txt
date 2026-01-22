@@ -1,2 +1,284 @@
-datr=evYJaW2ExZ5I8ejrBcJhrWgt; sb=e_YJafHBd2g1lJ6EFzBnaWCC; locale=vi_VN; ps_l=1; ps_n=1; c_user=61586313488195; xs=45%3A0kx8snTVdIucmg%3A2%3A1768644863%3A-1%3A-1%3A%3AAczi1WUAB9IuPVXwRlG1VW9N-mfSnRCMAducWXpu4w; wd=746x641; fr=1Ah5becSHdGq6Ewd0.AWfigVYaj8uvTUieAqZa-dIDMefz9J8UZ9Mklsntb8-qb-kC2OM.Bpa2EI..AAA.0.0.Bpa2El.AWd9jq9AyWTREL-oAgaZsFq7I5g; presence=C%7B%22t3%22%3A%5B%5D%2C%22utc3%22%3A1768645013873%2C%22v%22%3A1%7D
+import 'dart:convert';
+import 'dart:math';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 
+void main() {
+  runApp(const MyApp());
+}
+
+/* ================== GLOBAL STATE ================== */
+int kcoin = 0;
+int maxClickPerDay = 1000;
+int clickToday = 0;
+bool keyVerified = false;
+
+/* ================== APP ================== */
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: const MainScreen(),
+    );
+  }
+}
+
+/* ================== MAIN SCREEN ================== */
+class MainScreen extends StatefulWidget {
+  const MainScreen({super.key});
+
+  @override
+  State<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends State<MainScreen> {
+  int index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      showKeyDialog();
+    });
+  }
+
+  void showKeyDialog() {
+    TextEditingController keyCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: const Text("Nhập Key"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: keyCtrl,
+              decoration: const InputDecoration(hintText: "Nhập key"),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              "Lấy Key free hoặc VIP tại:\n"
+              "Zalo: 0854533557\n"
+              "Fb: facebook.com/khanhdev223",
+              style: TextStyle(fontSize: 12),
+            )
+          ],
+        ),
+        actions: [
+          TextButton(
+            child: const Text("Xác nhận"),
+            onPressed: () async {
+              bool ok = await verifyKey(keyCtrl.text);
+              if (ok) {
+                setState(() => keyVerified = true);
+                Navigator.pop(context);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Key không hợp lệ")),
+                );
+              }
+            },
+          )
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!keyVerified) {
+      return const Scaffold(body: SizedBox());
+    }
+
+    return Scaffold(
+      body: index == 0 ? const HomeScreen() : const ClaimScreen(),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: index,
+        onTap: (i) => setState(() => index = i),
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
+          BottomNavigationBarItem(icon: Icon(Icons.wallet), label: "Claim Token"),
+        ],
+      ),
+    );
+  }
+}
+
+/* ================== HOME SCREEN ================== */
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+  }
+
+  void onClickCoin() {
+    if (clickToday >= maxClickPerDay) return;
+
+    setState(() {
+      clickToday++;
+      kcoin++;
+    });
+
+    controller.forward(from: 0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        header(walletIcon: true),
+        const Spacer(),
+        ScaleTransition(
+          scale: Tween(begin: 1.0, end: 1.2).animate(controller),
+          child: GestureDetector(
+            onTap: onClickCoin,
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  colors: [Colors.orange, Colors.amber],
+                ),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black26, blurRadius: 10)
+                ],
+              ),
+              child: const Center(
+                child: Text(
+                  "K",
+                  style: TextStyle(
+                      fontSize: 48,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        Text("$clickToday / $maxClickPerDay click/day"),
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: LinearProgressIndicator(
+            value: clickToday / maxClickPerDay,
+          ),
+        ),
+        const Spacer(),
+      ],
+    );
+  }
+}
+
+/* ================== CLAIM SCREEN ================== */
+class ClaimScreen extends StatefulWidget {
+  const ClaimScreen({super.key});
+
+  @override
+  State<ClaimScreen> createState() => _ClaimScreenState();
+}
+
+class _ClaimScreenState extends State<ClaimScreen> {
+  String bank = "Vietcombank";
+  TextEditingController accCtrl = TextEditingController();
+  TextEditingController moneyCtrl = TextEditingController();
+
+  void claim() async {
+    String body =
+        "Ngân hàng: $bank\nSố tài khoản: ${accCtrl.text}\nSố tiền: ${moneyCtrl.text}";
+    final uri = Uri.parse(
+        "mailto:kngo23612@gmail.com?subject=Claim Token&body=${Uri.encodeComponent(body)}");
+    await launchUrl(uri);
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        content: Text(
+            "Bạn đã rút thành công số tiền ${moneyCtrl.text}đ\nĐợi admin duyệt tiền"),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          header(walletIcon: false),
+          DropdownButton<String>(
+            value: bank,
+            items: const [
+              DropdownMenuItem(value: "Vietcombank", child: Text("Vietcombank")),
+              DropdownMenuItem(value: "MB Bank", child: Text("MB Bank")),
+              DropdownMenuItem(value: "Techcombank", child: Text("Techcombank")),
+            ],
+            onChanged: (v) => setState(() => bank = v!),
+          ),
+          TextField(
+            controller: accCtrl,
+            decoration: const InputDecoration(labelText: "Số tài khoản"),
+          ),
+          TextField(
+            controller: moneyCtrl,
+            decoration: const InputDecoration(labelText: "Số tiền muốn rút"),
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton(onPressed: claim, child: const Text("Claim Token")),
+          const SizedBox(height: 10),
+          const Text("1000 Kcoin = 1000đ"),
+        ],
+      ),
+    );
+  }
+}
+
+/* ================== HEADER ================== */
+Widget header({required bool walletIcon}) {
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.black.withOpacity(0.05),
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text("$kcoin Kcoin",
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        if (walletIcon) const Icon(Icons.account_balance_wallet),
+      ],
+    ),
+  );
+}
+
+/* ================== VERIFY KEY ================== */
+Future<bool> verifyKey(String key) async {
+  const rawUrl =
+      "https://raw.githubusercontent.com/kkkkk5234/toolgopv1/main/key.json";
+
+  final res = await http.get(Uri.parse(rawUrl));
+  if (res.statusCode == 200) {
+    List list = jsonDecode(res.body);
+    return list.contains(key);
+  }
+  return false;
+}
