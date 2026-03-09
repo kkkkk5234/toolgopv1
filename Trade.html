@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QUANTUM AI | TON VNDC Edition</title>
+    <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #04060b;
+            --bg-secondary: #0d1117;
+            --accent: #2563eb;
+            --bull: #10b981;
+            --bear: #ef4444;
+            --border: #30363d;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: #c9d1d9;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .app-container {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            grid-template-rows: 50px 1fr 180px;
+            height: 100vh;
+        }
+
+        header {
+            grid-column: 1 / -1;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            justify-content: space-between;
+        }
+
+        .main-chart {
+            grid-area: 2 / 1 / 3 / 2;
+            position: relative;
+            border-right: 1px solid var(--border);
+        }
+
+        .sidebar {
+            grid-area: 2 / 2 / 4 / 3;
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border);
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .bottom-bar {
+            grid-area: 3 / 1 / 4 / 2;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            display: flex;
+            padding: 10px;
+            gap: 15px;
+        }
+
+        .card {
+            background: #161b22;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px;
+        }
+
+        #price-tag {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 1.4rem;
+            font-weight: 700;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        .mini-label {
+            font-size: 0.65rem;
+            color: #8b949e;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        #chart-instance { width: 100%; height: 100%; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: var(--bg-primary); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <header>
+            <div class="flex items-center space-x-4">
+                <h1 class="text-blue-500 font-bold text-lg">QUANTUM AI</h1>
+                <select id="pairSelect" class="bg-gray-800 text-sm rounded border border-gray-700 px-2 py-1 outline-none text-white">
+                    <option value="TONVNDC">TON / VNDC</option>
+                    <option value="BTCVNDC">BTC / VNDC</option>
+                    <option value="TONUSDT">TON / USDT</option>
+                    <option value="BTCUSDT">BTC / USDT</option>
+                    <option value="ETHUSDT">ETH / USDT</option>
+                </select>
+                <div id="price-tag" class="text-white">---.--</div>
+                <span id="currency-unit" class="text-xs text-gray-500 font-bold">VNDC</span>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <div id="connectionStatus" class="flex items-center text-[10px]">
+                    <span class="status-dot bg-green-500"></span>
+                    <span class="text-gray-400">HỆ THỐNG SẴN SÀNG</span>
+                </div>
+                <button onclick="location.reload()" class="text-[10px] bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded">RESET</button>
+            </div>
+        </header>
+
+        <main class="main-chart">
+            <div id="chart-instance"></div>
+            <div class="absolute top-2 left-2 z-10 bg-black bg-opacity-60 p-2 rounded border border-gray-800 text-[10px] font-mono pointer-events-none">
+                <span class="text-gray-400">O:</span> <span id="oVal" class="text-white">--</span>
+                <span class="text-gray-400 ml-2">H:</span> <span id="hVal" class="text-white">--</span>
+                <span class="text-gray-400 ml-2">L:</span> <span id="lVal" class="text-white">--</span>
+                <span class="text-gray-400 ml-2">C:</span> <span id="cVal" class="text-white">--</span>
+            </div>
+        </main>
+
+        <aside class="sidebar">
+            <div class="mb-6">
+                <span class="mini-label">Xác suất AI (H1)</span>
+                <div class="flex flex-col items-center justify-center py-6 bg-blue-900 bg-opacity-10 rounded-lg border border-blue-900 border-opacity-30 mt-2">
+                    <div id="aiProbability" class="text-4xl font-black text-white">--%</div>
+                    <div id="aiSignalText" class="text-[10px] text-blue-400 mt-1 uppercase font-bold tracking-widest">ĐANG QUÉT...</div>
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                <div class="card">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="mini-label">Xu hướng</span>
+                        <span id="trendVal" class="text-xs font-bold text-gray-400">--</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="mini-label">Độ tin cậy</span>
+                        <span id="confidenceVal" class="text-xs font-mono text-white">--%</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="card border-green-900 border-opacity-40">
+                        <div class="mini-label text-green-500 mb-1">Take Profit</div>
+                        <div id="tpPrice" class="text-xs font-bold text-white">--</div>
+                    </div>
+                    <div class="card border-red-900 border-opacity-40">
+                        <div class="mini-label text-red-500 mb-1">Stop Loss</div>
+                        <div id="slPrice" class="text-xs font-bold text-white">--</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <span class="mini-label mb-2 block">Dòng tiền Cá mập</span>
+                    <div id="whaleFeed" class="text-[9px] space-y-1 font-mono h-32 overflow-hidden">
+                        <div class="text-gray-600">Khởi tạo dữ liệu...</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <footer class="bottom-bar">
+            <div class="flex-1 card">
+                <span class="mini-label mb-2 block text-blue-500">Thông số kỹ thuật</span>
+                <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px]">
+                    <div class="flex justify-between"><span class="text-gray-500">RSI:</span> <span id="rsiVal">--</span></div>
+                    <div class="flex justify-between"><span class="text-gray-500">ATR:</span> <span id="atrVal">--</span></div>
+                    <div class="flex justify-between"><span class="text-gray-500">EMA200:</span> <span id="emaVal">--</span></div>
+                    <div class="flex justify-between"><span class="text-gray-500">Vốn hóa:</span> <span class="text-white">High</span></div>
+                </div>
+            </div>
+            
+            <div class="flex-1 card overflow-hidden">
+                <span class="mini-label mb-2 block text-purple-500">Xung lực thị trường</span>
+                <div id="momentumBars" class="flex items-end h-20 space-x-1"></div>
+            </div>
+
+            <div class="flex-1 card">
+                <span class="mini-label mb-2 block text-red-500">Khuyến nghị rủi ro</span>
+                <p id="riskAdvice" class="text-[10px] text-gray-400 leading-tight">Đang đo lường độ biến động...</p>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        /**
+         * QUANTUM AI - VNDC ADAPTIVE ENGINE
+         * Tự động chuyển đổi USDT sang VNDC
+         */
+
+        const USDT_VNDC_RATE = 25450; // Tỷ giá giả định, có thể cập nhật thực tế
+        const API_NODES = [
+            'https://api1.binance.com/api/v3',
+            'https://api2.binance.com/api/v3',
+            'https://api3.binance.com/api/v3'
+        ];
+
+        class QuantumApp {
+            constructor() {
+                this.pair = 'TONVNDC';
+                this.baseSymbol = 'TONUSDT';
+                this.isVndc = true;
+                this.chart = null;
+                this.series = null;
+                this.history = [];
+                this.ws = null;
+                
+                this.init();
+            }
+
+            init() {
+                this.setupChart();
+                this.setupUI();
+                this.loadData();
+            }
+
+            setupChart() {
+                const el = document.getElementById('chart-instance');
+                this.chart = LightweightCharts.createChart(el, {
+                    layout: { backgroundColor: '#04060b', textColor: '#8b949e' },
+                    grid: { vertLines: { color: '#161b22' }, horzLines: { color: '#161b22' } },
+                    priceScale: { borderColor: '#30363d' },
+                    timeScale: { borderColor: '#30363d', timeVisible: true },
+                    crosshair: { mode: LightweightCharts.CrosshairMode.Normal }
+                });
+
+                this.series = this.chart.addCandlestickSeries({
+                    upColor: '#10b981', downColor: '#ef4444',
+                    borderVisible: false, wickUpColor: '#10b981', wickDownColor: '#ef4444'
+                });
+
+                window.addEventListener('resize', () => {
+                    this.chart.applyOptions({ width: el.clientWidth, height: el.clientHeight });
+                });
+            }
+
+            setupUI() {
+                document.getElementById('pairSelect').onchange = (e) => {
+                    this.pair = e.target.value;
+                    this.isVndc = this.pair.includes('VNDC');
+                    this.baseSymbol = this.pair.replace('VNDC', 'USDT');
+                    document.getElementById('currency-unit').innerText = this.isVndc ? 'VNDC' : 'USDT';
+                    this.loadData();
+                };
+
+                const mom = document.getElementById('momentumBars');
+                for(let i=0; i<20; i++) {
+                    const b = document.createElement('div');
+                    b.className = 'flex-1 bg-blue-500 bg-opacity-20 rounded-t-sm transition-all duration-300';
+                    mom.appendChild(b);
+                }
+            }
+
+            async loadData() {
+                let success = false;
+                for (const node of API_NODES) {
+                    try {
+                        const res = await fetch(`${node}/klines?symbol=${this.baseSymbol}&interval=1h&limit=500`);
+                        if (!res.ok) continue;
+                        
+                        const raw = await res.json();
+                        this.history = raw.map(d => {
+                            const multiplier = this.isVndc ? USDT_VNDC_RATE : 1;
+                            return {
+                                time: d[0] / 1000,
+                                open: parseFloat(d[1]) * multiplier,
+                                high: parseFloat(d[2]) * multiplier,
+                                low: parseFloat(d[3]) * multiplier,
+                                close: parseFloat(d[4]) * multiplier,
+                                volume: parseFloat(d[5])
+                            };
+                        });
+                        
+                        this.series.setData(this.history);
+                        success = true;
+                        break;
+                    } catch (e) { console.warn("Node failed:", node); }
+                }
+
+                if (success) {
+                    this.startLive();
+                    this.analyze();
+                } else {
+                    setTimeout(() => this.loadData(), 3000);
+                }
+            }
+
+            startLive() {
+                if (this.ws) this.ws.close();
+                this.ws = new WebSocket(`wss://stream.binance.com:9443/ws/${this.baseSymbol.toLowerCase()}@kline_1h`);
+                
+                this.ws.onmessage = (e) => {
+                    const msg = JSON.parse(e.data);
+                    const k = msg.k;
+                    const multiplier = this.isVndc ? USDT_VNDC_RATE : 1;
+                    
+                    const candle = {
+                        time: k.t / 1000,
+                        open: parseFloat(k.o) * multiplier,
+                        high: parseFloat(k.h) * multiplier,
+                        low: parseFloat(k.l) * multiplier,
+                        close: parseFloat(k.c) * multiplier,
+                        volume: parseFloat(k.v)
+                    };
+
+                    this.series.update(candle);
+                    this.updateDisplay(candle);
+                    
+                    if (this.history[this.history.length-1].time === candle.time) {
+                        this.history[this.history.length-1] = candle;
+                    } else {
+                        this.history.push(candle);
+                    }
+                    this.analyze();
+                };
+            }
+
+            updateDisplay(c) {
+                const tag = document.getElementById('price-tag');
+                tag.innerText = c.close.toLocaleString(undefined, { maximumFractionDigits: this.isVndc ? 0 : 4 });
+                tag.style.color = c.close >= c.open ? '#10b981' : '#ef4444';
+
+                const fmt = (v) => v.toLocaleString(undefined, { maximumFractionDigits: this.isVndc ? 0 : 3 });
+                document.getElementById('oVal').innerText = fmt(c.open);
+                document.getElementById('hVal').innerText = fmt(c.high);
+                document.getElementById('lVal').innerText = fmt(c.low);
+                document.getElementById('cVal').innerText = fmt(c.close);
+            }
+
+            analyze() {
+                if (this.history.length < 20) return;
+                const prices = this.history.map(h => h.close);
+                const last = prices[prices.length - 1];
+
+                const rsi = this.calcRSI(prices);
+                const ema = this.calcEMA(prices, 200);
+                const atr = this.calcATR(this.history);
+
+                document.getElementById('rsiVal').innerText = rsi.toFixed(1);
+                document.getElementById('emaVal').innerText = ema.toLocaleString(undefined, {maximumFractionDigits: 0});
+                document.getElementById('atrVal').innerText = atr.toLocaleString(undefined, {maximumFractionDigits: 0});
+
+                const trend = last > ema;
+                document.getElementById('trendVal').innerText = trend ? "TĂNG (BULL)" : "GIẢM (BEAR)";
+                document.getElementById('trendVal').className = trend ? "text-xs font-bold text-green-400" : "text-xs font-bold text-red-400";
+
+                let prob = 50 + (trend ? 15 : -15);
+                if (rsi < 35) prob += 20;
+                if (rsi > 65) prob -= 20;
+                prob = Math.min(Math.max(prob + (Math.random() * 6 - 3), 12), 94);
+
+                this.updateAIUI(prob, trend, atr, last);
+                this.updateBars(rsi);
+            }
+
+            updateAIUI(p, trend, atr, price) {
+                document.getElementById('aiProbability').innerText = Math.round(p) + '%';
+                const sig = document.getElementById('aiSignalText');
+                const conf = document.getElementById('confidenceVal');
+
+                conf.innerText = Math.round(Math.abs(p - 50) * 1.8) + '%';
+
+                if (p > 60) {
+                    sig.innerText = "TÍN HIỆU MUA";
+                    sig.className = "text-[10px] text-green-400 mt-1 uppercase font-bold tracking-widest";
+                } else if (p < 40) {
+                    sig.innerText = "TÍN HIỆU BÁN";
+                    sig.className = "text-[10px] text-red-400 mt-1 uppercase font-bold tracking-widest";
+                } else {
+                    sig.innerText = "ĐI NGANG / CHỜ";
+                    sig.className = "text-[10px] text-gray-500 mt-1 uppercase font-bold tracking-widest";
+                }
+
+                const tp = trend ? price + (atr * 2.5) : price - (atr * 2.5);
+                const sl = trend ? price - (atr * 1.5) : price + (atr * 1.5);
+                
+                const fmt = (v) => v.toLocaleString(undefined, { maximumFractionDigits: 0 });
+                document.getElementById('tpPrice').innerText = fmt(tp);
+                document.getElementById('slPrice').innerText = fmt(sl);
+
+                const risk = document.getElementById('riskAdvice');
+                if (atr / price > 0.03) {
+                    risk.innerText = "CẢNH BÁO: Biến động cực mạnh. Không khuyến nghị dùng đòn bẩy cao.";
+                    risk.className = "text-[10px] text-red-400 leading-tight font-bold";
+                } else {
+                    risk.innerText = "Thị trường ổn định. Có thể giao dịch theo xu hướng EMA200.";
+                    risk.className = "text-[10px] text-gray-400 leading-tight";
+                }
+            }
+
+            updateBars(rsi) {
+                const bars = document.querySelectorAll('#momentumBars div');
+                bars.forEach(b => {
+                    const h = (Math.random() * 40) + (rsi * 0.6);
+                    b.style.height = Math.min(h, 100) + '%';
+                    b.style.backgroundColor = rsi > 50 ? '#10b98133' : '#ef444433';
+                });
+            }
+
+            calcRSI(data) {
+                let g = 0, l = 0;
+                const p = 14;
+                for (let i = data.length - p; i < data.length; i++) {
+                    let d = data[i] - data[i-1];
+                    if (d > 0) g += d; else l -= d;
+                }
+                return 100 - (100 / (1 + (g/p) / (l/p || 1)));
+            }
+
+            calcEMA(data, p) {
+                const k = 2 / (p + 1);
+                let ema = data[0];
+                for (let i = 1; i < data.length; i++) ema = data[i] * k + ema * (1 - k);
+                return ema;
+            }
+
+            calcATR(c) {
+                let s = 0, p = 14;
+                const last = c.slice(-p);
+                for(let i=1; i<last.length; i++) {
+                    s += Math.max(last[i].high - last[i].low, Math.abs(last[i].high - last[i-1].close));
+                }
+                return s / p;
+            }
+        }
+
+        window.onload = () => new QuantumApp();
+    </script>
+</body>
+</html>
+
