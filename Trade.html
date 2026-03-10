@@ -3,313 +3,364 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QUANTUM AI | TON VNDC Edition</title>
+    <title>QUANTUM AI | Siêu Phân Tích 1000 Nến</title>
     <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
         :root {
-            --bg-primary: #04060b;
-            --bg-secondary: #0d1117;
-            --accent: #2563eb;
-            --bull: #10b981;
-            --bear: #ef4444;
-            --border: #30363d;
+            --bg-base: #0b0e14; /* Nền tối phong cách Binance */
+            --bg-panel: #151a23;
+            --border: #2b3139;
+            --text-main: #eaecef;
+            --text-muted: #848e9c;
+            --up: #0ecb81;
+            --down: #f6465d;
         }
 
         body {
-            background-color: var(--bg-primary);
-            color: #c9d1d9;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
             height: 100vh;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
-        .app-container {
-            display: grid;
-            grid-template-columns: 1fr 340px;
-            grid-template-rows: 50px 1fr 180px;
-            height: 100vh;
-        }
-
+        /* Header Layout */
         header {
-            grid-column: 1 / -1;
-            background: var(--bg-secondary);
+            height: 60px;
+            background-color: var(--bg-panel);
             border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
-            padding: 0 15px;
             justify-content: space-between;
+            padding: 0 20px;
+            flex-shrink: 0;
         }
 
-        .main-chart {
-            grid-area: 2 / 1 / 3 / 2;
+        /* Main Workspace Layout */
+        .workspace {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Chart Area (Left) */
+        .chart-container {
+            flex: 1;
             position: relative;
-            border-right: 1px solid var(--border);
+            background-color: var(--bg-base);
         }
 
-        .sidebar {
-            grid-area: 2 / 2 / 4 / 3;
-            background: var(--bg-secondary);
+        #tv-chart {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Sidebar Area (Right) */
+        .sidebar-right {
+            width: 380px;
+            background-color: var(--bg-panel);
             border-left: 1px solid var(--border);
-            padding: 15px;
+            display: flex;
+            flex-direction: column;
             overflow-y: auto;
         }
 
-        .bottom-bar {
-            grid-area: 3 / 1 / 4 / 2;
-            background: var(--bg-secondary);
-            border-top: 1px solid var(--border);
-            display: flex;
-            padding: 10px;
-            gap: 15px;
+        /* Components */
+        .panel-box {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
         }
 
-        .card {
-            background: #161b22;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 10px;
-        }
-
-        #price-tag {
-            font-family: 'Roboto Mono', monospace;
-            font-size: 1.4rem;
-            font-weight: 700;
-        }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 5px;
-        }
-
-        .mini-label {
-            font-size: 0.65rem;
-            color: #8b949e;
+        .panel-title {
+            font-size: 0.8rem;
+            color: var(--text-muted);
             text-transform: uppercase;
             font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
         }
 
-        #chart-instance { width: 100%; height: 100%; }
-        
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: var(--bg-primary); }
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+        }
+
+        .data-label { color: var(--text-muted); }
+        .data-value { font-family: 'Courier New', Courier, monospace; font-weight: bold; }
+
+        .btn-action {
+            width: 100%;
+            padding: 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: 0.2s;
+        }
+
+        /* Tùy chỉnh thanh cuộn cho Sidebar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-panel); }
         ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #474d57; }
+
+        .text-up { color: var(--up); }
+        .text-down { color: var(--down); }
     </style>
 </head>
 <body>
 
-    <div class="app-container">
-        <header>
-            <div class="flex items-center space-x-4">
-                <h1 class="text-blue-500 font-bold text-lg">QUANTUM AI</h1>
-                <select id="pairSelect" class="bg-gray-800 text-sm rounded border border-gray-700 px-2 py-1 outline-none text-white">
-                    <option value="TONVNDC">TON / VNDC</option>
-                    <option value="BTCVNDC">BTC / VNDC</option>
-                    <option value="TONUSDT">TON / USDT</option>
-                    <option value="BTCUSDT">BTC / USDT</option>
-                    <option value="ETHUSDT">ETH / USDT</option>
-                </select>
-                <div id="price-tag" class="text-white">---.--</div>
-                <span id="currency-unit" class="text-xs text-gray-500 font-bold">VNDC</span>
+    <!-- PHẦN HEADER -->
+    <header>
+        <div class="flex items-center space-x-6">
+            <h1 class="text-blue-500 font-black text-xl tracking-wider">QUANTUM AI</h1>
+            <select id="pairSelect" class="bg-gray-800 text-white border border-gray-600 rounded px-3 py-1.5 outline-none font-bold">
+                <option value="TONVNDC">TON / VNDC (Tiền Việt)</option>
+                <option value="BTCVNDC">BTC / VNDC (Tiền Việt)</option>
+                <option value="BTCUSDT">BTC / USDT</option>
+                <option value="ETHUSDT">ETH / USDT</option>
+                <option value="SOLUSDT">SOL / USDT</option>
+            </select>
+            <div class="flex flex-col">
+                <span id="header-price" class="text-2xl font-bold" style="font-family: monospace;">Đang tải...</span>
             </div>
-            
-            <div class="flex items-center space-x-4">
-                <div id="connectionStatus" class="flex items-center text-[10px]">
-                    <span class="status-dot bg-green-500"></span>
-                    <span class="text-gray-400">HỆ THỐNG SẴN SÀNG</span>
-                </div>
-                <button onclick="location.reload()" class="text-[10px] bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded">RESET</button>
+        </div>
+        
+        <div class="flex items-center space-x-3">
+            <div id="connectionStatus" class="flex items-center bg-gray-900 px-3 py-1.5 rounded border border-gray-700">
+                <div class="w-2 h-2 rounded-full bg-yellow-500 mr-2 animate-pulse" id="status-dot"></div>
+                <span class="text-xs font-bold text-gray-300" id="status-text">ĐANG KẾT NỐI API...</span>
             </div>
-        </header>
+        </div>
+    </header>
 
-        <main class="main-chart">
-            <div id="chart-instance"></div>
-            <div class="absolute top-2 left-2 z-10 bg-black bg-opacity-60 p-2 rounded border border-gray-800 text-[10px] font-mono pointer-events-none">
-                <span class="text-gray-400">O:</span> <span id="oVal" class="text-white">--</span>
-                <span class="text-gray-400 ml-2">H:</span> <span id="hVal" class="text-white">--</span>
-                <span class="text-gray-400 ml-2">L:</span> <span id="lVal" class="text-white">--</span>
-                <span class="text-gray-400 ml-2">C:</span> <span id="cVal" class="text-white">--</span>
+    <!-- PHẦN KHÔNG GIAN LÀM VIỆC -->
+    <div class="workspace">
+        
+        <!-- BÊN TRÁI: BIỂU ĐỒ -->
+        <main class="chart-container">
+            <div id="tv-chart"></div>
+            
+            <!-- Hiển thị giá Open, High, Low, Close (OHLC) góc trái biểu đồ -->
+            <div class="absolute top-3 left-3 z-10 bg-gray-900 bg-opacity-80 p-2 rounded text-xs font-mono border border-gray-700 flex space-x-3">
+                <div><span class="text-gray-400">Mở:</span> <span id="valO" class="text-white">--</span></div>
+                <div><span class="text-gray-400">Cao:</span> <span id="valH" class="text-white">--</span></div>
+                <div><span class="text-gray-400">Thấp:</span> <span id="valL" class="text-white">--</span></div>
+                <div><span class="text-gray-400">Đóng:</span> <span id="valC" class="text-white">--</span></div>
             </div>
         </main>
 
-        <aside class="sidebar">
-            <div class="mb-6">
-                <span class="mini-label">Xác suất AI (H1)</span>
-                <div class="flex flex-col items-center justify-center py-6 bg-blue-900 bg-opacity-10 rounded-lg border border-blue-900 border-opacity-30 mt-2">
-                    <div id="aiProbability" class="text-4xl font-black text-white">--%</div>
-                    <div id="aiSignalText" class="text-[10px] text-blue-400 mt-1 uppercase font-bold tracking-widest">ĐANG QUÉT...</div>
-                </div>
-            </div>
-
-            <div class="space-y-3">
-                <div class="card">
-                    <div class="flex justify-between items-center mb-1">
-                        <span class="mini-label">Xu hướng</span>
-                        <span id="trendVal" class="text-xs font-bold text-gray-400">--</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="mini-label">Độ tin cậy</span>
-                        <span id="confidenceVal" class="text-xs font-mono text-white">--%</span>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-2">
-                    <div class="card border-green-900 border-opacity-40">
-                        <div class="mini-label text-green-500 mb-1">Take Profit</div>
-                        <div id="tpPrice" class="text-xs font-bold text-white">--</div>
-                    </div>
-                    <div class="card border-red-900 border-opacity-40">
-                        <div class="mini-label text-red-500 mb-1">Stop Loss</div>
-                        <div id="slPrice" class="text-xs font-bold text-white">--</div>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <span class="mini-label mb-2 block">Dòng tiền Cá mập</span>
-                    <div id="whaleFeed" class="text-[9px] space-y-1 font-mono h-32 overflow-hidden">
-                        <div class="text-gray-600">Khởi tạo dữ liệu...</div>
-                    </div>
-                </div>
-            </div>
-        </aside>
-
-        <footer class="bottom-bar">
-            <div class="flex-1 card">
-                <span class="mini-label mb-2 block text-blue-500">Thông số kỹ thuật</span>
-                <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px]">
-                    <div class="flex justify-between"><span class="text-gray-500">RSI:</span> <span id="rsiVal">--</span></div>
-                    <div class="flex justify-between"><span class="text-gray-500">ATR:</span> <span id="atrVal">--</span></div>
-                    <div class="flex justify-between"><span class="text-gray-500">EMA200:</span> <span id="emaVal">--</span></div>
-                    <div class="flex justify-between"><span class="text-gray-500">Vốn hóa:</span> <span class="text-white">High</span></div>
-                </div>
-            </div>
+        <!-- BÊN PHẢI: BẢNG PHÂN TÍCH AI & THÔNG SỐ -->
+        <aside class="sidebar-right">
             
-            <div class="flex-1 card overflow-hidden">
-                <span class="mini-label mb-2 block text-purple-500">Xung lực thị trường</span>
-                <div id="momentumBars" class="flex items-end h-20 space-x-1"></div>
+            <!-- 1. KHUYẾN NGHỊ HÀNH ĐỘNG -->
+            <div class="panel-box bg-gray-900 bg-opacity-50">
+                <div class="panel-title text-blue-400">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    Quyết định AI (Khung 1H)
+                </div>
+                
+                <div id="action-box" class="btn-action bg-gray-800 text-gray-400 border border-gray-700">
+                    ĐANG PHÂN TÍCH...
+                </div>
+                
+                <div class="flex justify-between mt-4">
+                    <div class="text-center">
+                        <div class="text-xs text-gray-500 uppercase mb-1">Xác suất thắng</div>
+                        <div id="ai-winrate" class="text-2xl font-black text-white">--%</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-xs text-gray-500 uppercase mb-1">Xu hướng chính</div>
+                        <div id="ai-trend" class="text-lg font-bold text-gray-400 mt-1">--</div>
+                    </div>
+                </div>
             </div>
 
-            <div class="flex-1 card">
-                <span class="mini-label mb-2 block text-red-500">Khuyến nghị rủi ro</span>
-                <p id="riskAdvice" class="text-[10px] text-gray-400 leading-tight">Đang đo lường độ biến động...</p>
+            <!-- 2. ĐIỂM VÀO LỆNH (ENTRY, SL, TP) -->
+            <div class="panel-box">
+                <div class="panel-title">Cấu trúc Lệnh Đề Xuất</div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-gray-800 p-2 rounded border border-green-900">
+                        <div class="text-[10px] text-green-500 uppercase mb-1">Chốt lời (Take Profit)</div>
+                        <div id="val-tp" class="font-mono font-bold text-sm">--</div>
+                    </div>
+                    <div class="bg-gray-800 p-2 rounded border border-red-900">
+                        <div class="text-[10px] text-red-500 uppercase mb-1">Dừng lỗ (Stop Loss)</div>
+                        <div id="val-sl" class="font-mono font-bold text-sm">--</div>
+                    </div>
+                </div>
+                <div class="mt-3 text-[11px] text-gray-400 italic" id="trade-logic">
+                    Đang tính toán ATR và biên độ giá...
+                </div>
             </div>
-        </footer>
+
+            <!-- 3. THÔNG SỐ KỸ THUẬT THỰC TẾ (1000 NẾN) -->
+            <div class="panel-box">
+                <div class="panel-title">Chỉ báo Kỹ thuật (Real-time)</div>
+                <div class="data-row">
+                    <span class="data-label">RSI (Sức mạnh tương đối)</span>
+                    <span id="val-rsi" class="data-value">--</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">EMA 50 (Trung bình ngắn)</span>
+                    <span id="val-ema50" class="data-value">--</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">EMA 200 (Trung bình dài)</span>
+                    <span id="val-ema200" class="data-value">--</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">ATR (Biến động giá)</span>
+                    <span id="val-atr" class="data-value">--</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Khối lượng 24h</span>
+                    <span id="val-vol24" class="data-value">--</span>
+                </div>
+            </div>
+
+            <!-- 4. PHÂN TÍCH DÒNG TIỀN -->
+            <div class="panel-box flex-1">
+                <div class="panel-title">Động lượng Thị trường</div>
+                <div class="w-full bg-gray-800 h-2 rounded-full mb-2 overflow-hidden flex">
+                    <div id="bull-power" class="bg-green-500 h-full" style="width: 50%;"></div>
+                    <div id="bear-power" class="bg-red-500 h-full" style="width: 50%;"></div>
+                </div>
+                <div class="flex justify-between text-[10px] text-gray-500 mb-4">
+                    <span>Lực Mua</span>
+                    <span>Lực Bán</span>
+                </div>
+                
+                <div class="text-[11px] text-gray-400 leading-relaxed bg-gray-800 p-3 rounded" id="ai-insight">
+                    Thu thập đủ 1000 nến để kích hoạt siêu cấu trúc phân tích dòng tiền...
+                </div>
+            </div>
+
+        </aside>
     </div>
 
     <script>
         /**
-         * QUANTUM AI - VNDC ADAPTIVE ENGINE
-         * Tự động chuyển đổi USDT sang VNDC
+         * QUANTUM AI v6.0 - REAL DATA ENGINE
+         * - Xử lý 1000 nến
+         * - Thuật toán RSI chuẩn (Wilder's Smoothing)
+         * - Tích hợp VNDC
          */
 
-        const USDT_VNDC_RATE = 25450; // Tỷ giá giả định, có thể cập nhật thực tế
         const API_NODES = [
+            'https://api.binance.com/api/v3',
             'https://api1.binance.com/api/v3',
-            'https://api2.binance.com/api/v3',
-            'https://api3.binance.com/api/v3'
+            'https://api2.binance.com/api/v3'
         ];
+        const USDT_VNDC_RATE = 25450; // Tỷ giá VNĐ
 
-        class QuantumApp {
+        class TradingEngine {
             constructor() {
                 this.pair = 'TONVNDC';
                 this.baseSymbol = 'TONUSDT';
                 this.isVndc = true;
                 this.chart = null;
-                this.series = null;
+                this.candleSeries = null;
                 this.history = [];
                 this.ws = null;
-                
-                this.init();
+
+                this.initUI();
+                this.initChart();
+                this.fetchHistoricalData();
             }
 
-            init() {
-                this.setupChart();
-                this.setupUI();
-                this.loadData();
-            }
-
-            setupChart() {
-                const el = document.getElementById('chart-instance');
-                this.chart = LightweightCharts.createChart(el, {
-                    layout: { backgroundColor: '#04060b', textColor: '#8b949e' },
-                    grid: { vertLines: { color: '#161b22' }, horzLines: { color: '#161b22' } },
-                    priceScale: { borderColor: '#30363d' },
-                    timeScale: { borderColor: '#30363d', timeVisible: true },
-                    crosshair: { mode: LightweightCharts.CrosshairMode.Normal }
-                });
-
-                this.series = this.chart.addCandlestickSeries({
-                    upColor: '#10b981', downColor: '#ef4444',
-                    borderVisible: false, wickUpColor: '#10b981', wickDownColor: '#ef4444'
-                });
-
-                window.addEventListener('resize', () => {
-                    this.chart.applyOptions({ width: el.clientWidth, height: el.clientHeight });
-                });
-            }
-
-            setupUI() {
-                document.getElementById('pairSelect').onchange = (e) => {
+            initUI() {
+                document.getElementById('pairSelect').addEventListener('change', (e) => {
                     this.pair = e.target.value;
                     this.isVndc = this.pair.includes('VNDC');
                     this.baseSymbol = this.pair.replace('VNDC', 'USDT');
-                    document.getElementById('currency-unit').innerText = this.isVndc ? 'VNDC' : 'USDT';
-                    this.loadData();
-                };
-
-                const mom = document.getElementById('momentumBars');
-                for(let i=0; i<20; i++) {
-                    const b = document.createElement('div');
-                    b.className = 'flex-1 bg-blue-500 bg-opacity-20 rounded-t-sm transition-all duration-300';
-                    mom.appendChild(b);
-                }
+                    this.setStatus("ĐANG ĐỔI CẶP...", "yellow");
+                    this.fetchHistoricalData();
+                });
             }
 
-            async loadData() {
+            initChart() {
+                const chartContainer = document.getElementById('tv-chart');
+                this.chart = LightweightCharts.createChart(chartContainer, {
+                    layout: { backgroundColor: '#0b0e14', textColor: '#848e9c' },
+                    grid: { vertLines: { color: '#1f2937' }, horzLines: { color: '#1f2937' } },
+                    timeScale: { borderColor: '#2b3139', timeVisible: true },
+                    priceScale: { borderColor: '#2b3139' },
+                    crosshair: { mode: LightweightCharts.CrosshairMode.Normal }
+                });
+
+                this.candleSeries = this.chart.addCandlestickSeries({
+                    upColor: '#0ecb81', downColor: '#f6465d',
+                    borderVisible: false, wickUpColor: '#0ecb81', wickDownColor: '#f6465d'
+                });
+
+                window.addEventListener('resize', () => {
+                    this.chart.applyOptions({ width: chartContainer.clientWidth, height: chartContainer.clientHeight });
+                });
+            }
+
+            setStatus(msg, color) {
+                document.getElementById('status-text').innerText = msg;
+                const dot = document.getElementById('status-dot');
+                dot.className = `w-2 h-2 rounded-full mr-2 ${color === 'green' ? 'bg-green-500' : color === 'red' ? 'bg-red-500' : 'bg-yellow-500 animate-pulse'}`;
+            }
+
+            formatPrice(val) {
+                if (!val) return "--";
+                return val.toLocaleString('vi-VN', { maximumFractionDigits: this.isVndc ? 0 : 4 });
+            }
+
+            async fetchHistoricalData() {
                 let success = false;
+                // YÊU CẦU: Tải 1000 nến để phân tích cấu trúc siêu dài
                 for (const node of API_NODES) {
                     try {
-                        const res = await fetch(`${node}/klines?symbol=${this.baseSymbol}&interval=1h&limit=500`);
-                        if (!res.ok) continue;
+                        const response = await fetch(`${node}/klines?symbol=${this.baseSymbol}&interval=1h&limit=1000`);
+                        if (!response.ok) continue;
                         
-                        const raw = await res.json();
-                        this.history = raw.map(d => {
-                            const multiplier = this.isVndc ? USDT_VNDC_RATE : 1;
-                            return {
-                                time: d[0] / 1000,
-                                open: parseFloat(d[1]) * multiplier,
-                                high: parseFloat(d[2]) * multiplier,
-                                low: parseFloat(d[3]) * multiplier,
-                                close: parseFloat(d[4]) * multiplier,
-                                volume: parseFloat(d[5])
-                            };
-                        });
+                        const data = await response.json();
+                        const multiplier = this.isVndc ? USDT_VNDC_RATE : 1;
                         
-                        this.series.setData(this.history);
+                        this.history = data.map(d => ({
+                            time: d[0] / 1000,
+                            open: parseFloat(d[1]) * multiplier,
+                            high: parseFloat(d[2]) * multiplier,
+                            low: parseFloat(d[3]) * multiplier,
+                            close: parseFloat(d[4]) * multiplier,
+                            volume: parseFloat(d[5])
+                        }));
+
+                        this.candleSeries.setData(this.history);
                         success = true;
+                        this.setStatus("TRỰC TUYẾN (1000 NẾN)", "green");
                         break;
-                    } catch (e) { console.warn("Node failed:", node); }
+                    } catch (err) { console.warn("Lỗi Node API:", node); }
                 }
 
                 if (success) {
-                    this.startLive();
-                    this.analyze();
+                    this.startWebSocket();
+                    this.runDeepAnalysis();
                 } else {
-                    setTimeout(() => this.loadData(), 3000);
+                    this.setStatus("LỖI KẾT NỐI - THỬ LẠI", "red");
+                    setTimeout(() => this.fetchHistoricalData(), 3000);
                 }
             }
 
-            startLive() {
+            startWebSocket() {
                 if (this.ws) this.ws.close();
                 this.ws = new WebSocket(`wss://stream.binance.com:9443/ws/${this.baseSymbol.toLowerCase()}@kline_1h`);
-                
-                this.ws.onmessage = (e) => {
-                    const msg = JSON.parse(e.data);
+
+                this.ws.onmessage = (event) => {
+                    const msg = JSON.parse(event.data);
                     const k = msg.k;
                     const multiplier = this.isVndc ? USDT_VNDC_RATE : 1;
                     
@@ -322,129 +373,206 @@
                         volume: parseFloat(k.v)
                     };
 
-                    this.series.update(candle);
-                    this.updateDisplay(candle);
-                    
-                    if (this.history[this.history.length-1].time === candle.time) {
-                        this.history[this.history.length-1] = candle;
+                    this.candleSeries.update(candle);
+                    this.updateHeaderPrices(candle);
+
+                    // Cập nhật mảng lịch sử nội bộ
+                    const lastIdx = this.history.length - 1;
+                    if (this.history[lastIdx].time === candle.time) {
+                        this.history[lastIdx] = candle;
                     } else {
                         this.history.push(candle);
+                        if (this.history.length > 1000) this.history.shift(); // Giữ tối đa 1000 nến
                     }
-                    this.analyze();
+
+                    this.runDeepAnalysis();
                 };
             }
 
-            updateDisplay(c) {
-                const tag = document.getElementById('price-tag');
-                tag.innerText = c.close.toLocaleString(undefined, { maximumFractionDigits: this.isVndc ? 0 : 4 });
-                tag.style.color = c.close >= c.open ? '#10b981' : '#ef4444';
+            updateHeaderPrices(c) {
+                const headerP = document.getElementById('header-price');
+                headerP.innerText = this.formatPrice(c.close) + (this.isVndc ? " VNDC" : " USDT");
+                headerP.className = `text-2xl font-bold ${c.close >= c.open ? 'text-up' : 'text-down'}`;
 
-                const fmt = (v) => v.toLocaleString(undefined, { maximumFractionDigits: this.isVndc ? 0 : 3 });
-                document.getElementById('oVal').innerText = fmt(c.open);
-                document.getElementById('hVal').innerText = fmt(c.high);
-                document.getElementById('lVal').innerText = fmt(c.low);
-                document.getElementById('cVal').innerText = fmt(c.close);
+                document.getElementById('valO').innerText = this.formatPrice(c.open);
+                document.getElementById('valH').innerText = this.formatPrice(c.high);
+                document.getElementById('valL').innerText = this.formatPrice(c.low);
+                document.getElementById('valC').innerText = this.formatPrice(c.close);
             }
 
-            analyze() {
-                if (this.history.length < 20) return;
-                const prices = this.history.map(h => h.close);
-                const last = prices[prices.length - 1];
+            // ==========================================
+            // SIÊU CẤU TRÚC PHÂN TÍCH TOÁN HỌC (REAL DATA)
+            // ==========================================
+            runDeepAnalysis() {
+                if (this.history.length < 250) return; // Cần đủ dữ liệu để tính EMA200 chính xác
 
-                const rsi = this.calcRSI(prices);
-                const ema = this.calcEMA(prices, 200);
-                const atr = this.calcATR(this.history);
+                const closes = this.history.map(c => c.close);
+                const currentPrice = closes[closes.length - 1];
 
-                document.getElementById('rsiVal').innerText = rsi.toFixed(1);
-                document.getElementById('emaVal').innerText = ema.toLocaleString(undefined, {maximumFractionDigits: 0});
-                document.getElementById('atrVal').innerText = atr.toLocaleString(undefined, {maximumFractionDigits: 0});
-
-                const trend = last > ema;
-                document.getElementById('trendVal').innerText = trend ? "TĂNG (BULL)" : "GIẢM (BEAR)";
-                document.getElementById('trendVal').className = trend ? "text-xs font-bold text-green-400" : "text-xs font-bold text-red-400";
-
-                let prob = 50 + (trend ? 15 : -15);
-                if (rsi < 35) prob += 20;
-                if (rsi > 65) prob -= 20;
-                prob = Math.min(Math.max(prob + (Math.random() * 6 - 3), 12), 94);
-
-                this.updateAIUI(prob, trend, atr, last);
-                this.updateBars(rsi);
-            }
-
-            updateAIUI(p, trend, atr, price) {
-                document.getElementById('aiProbability').innerText = Math.round(p) + '%';
-                const sig = document.getElementById('aiSignalText');
-                const conf = document.getElementById('confidenceVal');
-
-                conf.innerText = Math.round(Math.abs(p - 50) * 1.8) + '%';
-
-                if (p > 60) {
-                    sig.innerText = "TÍN HIỆU MUA";
-                    sig.className = "text-[10px] text-green-400 mt-1 uppercase font-bold tracking-widest";
-                } else if (p < 40) {
-                    sig.innerText = "TÍN HIỆU BÁN";
-                    sig.className = "text-[10px] text-red-400 mt-1 uppercase font-bold tracking-widest";
-                } else {
-                    sig.innerText = "ĐI NGANG / CHỜ";
-                    sig.className = "text-[10px] text-gray-500 mt-1 uppercase font-bold tracking-widest";
-                }
-
-                const tp = trend ? price + (atr * 2.5) : price - (atr * 2.5);
-                const sl = trend ? price - (atr * 1.5) : price + (atr * 1.5);
+                // 1. Tính toán các chỉ báo thực tế
+                const rsi = this.calculateRSI(closes, 14);
+                const ema50 = this.calculateEMA(closes, 50);
+                const ema200 = this.calculateEMA(closes, 200);
+                const atr = this.calculateATR(this.history, 14);
                 
-                const fmt = (v) => v.toLocaleString(undefined, { maximumFractionDigits: 0 });
-                document.getElementById('tpPrice').innerText = fmt(tp);
-                document.getElementById('slPrice').innerText = fmt(sl);
+                // Khối lượng 24h
+                const vol24hArray = this.history.slice(-24).map(c => c.volume);
+                const vol24h = vol24hArray.reduce((a, b) => a + b, 0);
 
-                const risk = document.getElementById('riskAdvice');
-                if (atr / price > 0.03) {
-                    risk.innerText = "CẢNH BÁO: Biến động cực mạnh. Không khuyến nghị dùng đòn bẩy cao.";
-                    risk.className = "text-[10px] text-red-400 leading-tight font-bold";
+                // 2. Cập nhật UI thông số kỹ thuật
+                document.getElementById('val-rsi').innerText = rsi.toFixed(2);
+                document.getElementById('val-rsi').className = `data-value ${rsi > 70 ? 'text-down' : rsi < 30 ? 'text-up' : ''}`;
+                document.getElementById('val-ema50').innerText = this.formatPrice(ema50);
+                document.getElementById('val-ema200').innerText = this.formatPrice(ema200);
+                document.getElementById('val-atr').innerText = this.formatPrice(atr);
+                document.getElementById('val-vol24').innerText = (vol24h / 1000).toFixed(1) + "K";
+
+                // 3. Logic Đánh Giá Hành Động Mua/Bán (AI Scoring)
+                let aiScore = 50; // Điểm trung lập
+                let trendText = "ĐI NGANG";
+                let isUpTrend = false;
+
+                // Đánh giá Xu hướng (Trend)
+                if (currentPrice > ema50 && ema50 > ema200) {
+                    aiScore += 20; trendText = "TĂNG MẠNH"; isUpTrend = true;
+                } else if (currentPrice > ema200) {
+                    aiScore += 10; trendText = "TĂNG NHẸ"; isUpTrend = true;
+                } else if (currentPrice < ema50 && ema50 < ema200) {
+                    aiScore -= 20; trendText = "GIẢM MẠNH"; isUpTrend = false;
+                } else if (currentPrice < ema200) {
+                    aiScore -= 10; trendText = "GIẢM NHẸ"; isUpTrend = false;
+                }
+
+                // Đánh giá RSI
+                if (rsi < 30) aiScore += 15; // Quá bán -> Tín hiệu Mua
+                if (rsi > 70) aiScore -= 15; // Quá mua -> Tín hiệu Bán
+
+                // Giới hạn điểm 0-100
+                aiScore = Math.max(5, Math.min(95, aiScore));
+
+                // 4. Render Nút Khuyến Nghị
+                const actionBox = document.getElementById('action-box');
+                const winRate = document.getElementById('ai-winrate');
+                const trendUI = document.getElementById('ai-trend');
+
+                winRate.innerText = aiScore.toFixed(0) + "%";
+                trendUI.innerText = trendText;
+                trendUI.className = `text-lg font-bold mt-1 ${isUpTrend ? 'text-up' : 'text-down'}`;
+
+                if (aiScore >= 70) {
+                    actionBox.innerText = "NÊN MUA MẠNH";
+                    actionBox.className = "btn-action bg-green-600 text-white shadow-lg";
+                } else if (aiScore >= 55) {
+                    actionBox.innerText = "NÊN MUA";
+                    actionBox.className = "btn-action bg-green-900 text-green-400 border border-green-700";
+                } else if (aiScore <= 30) {
+                    actionBox.innerText = "NÊN BÁN MẠNH";
+                    actionBox.className = "btn-action bg-red-600 text-white shadow-lg";
+                } else if (aiScore <= 45) {
+                    actionBox.innerText = "NÊN BÁN";
+                    actionBox.className = "btn-action bg-red-900 text-red-400 border border-red-700";
                 } else {
-                    risk.innerText = "Thị trường ổn định. Có thể giao dịch theo xu hướng EMA200.";
-                    risk.className = "text-[10px] text-gray-400 leading-tight";
+                    actionBox.innerText = "ĐỨNG NGOÀI (QUAN SÁT)";
+                    actionBox.className = "btn-action bg-gray-700 text-gray-300 border border-gray-600";
                 }
+
+                // 5. Render Take Profit / Stop Loss dựa trên ATR (Biến động thực tế)
+                // SL = 1.5 ATR, TP = 3 ATR (Tỉ lệ RR 1:2)
+                const slPrice = isUpTrend ? currentPrice - (atr * 1.5) : currentPrice + (atr * 1.5);
+                const tpPrice = isUpTrend ? currentPrice + (atr * 3.0) : currentPrice - (atr * 3.0);
+                
+                document.getElementById('val-tp').innerText = this.formatPrice(tpPrice);
+                document.getElementById('val-tp').className = `font-mono font-bold text-sm ${isUpTrend ? 'text-up' : 'text-down'}`;
+                
+                document.getElementById('val-sl').innerText = this.formatPrice(slPrice);
+                document.getElementById('val-sl').className = `font-mono font-bold text-sm ${isUpTrend ? 'text-down' : 'text-up'}`;
+
+                document.getElementById('trade-logic').innerText = `Lệnh ${isUpTrend?'Long/Mua':'Short/Bán'} - Tỷ lệ Lợi nhuận/Rủi ro: 1:2 (Tính theo ATR)`;
+
+                // 6. Cập nhật Động lượng (Thanh màu)
+                document.getElementById('bull-power').style.width = `${aiScore}%`;
+                document.getElementById('bear-power').style.width = `${100 - aiScore}%`;
+
+                // Render Insight Text
+                let insight = "";
+                if(rsi > 70) insight = "RSI đang ở mức Quá Mua. Cẩn thận rủi ro đảo chiều giảm giá.";
+                else if (rsi < 30) insight = "RSI chạm Quá Bán. Có thể bắt đáy ăn sóng hồi.";
+                else if (currentPrice > ema200) insight = "Giá nằm trên EMA200. Phe Mua (Bulls) đang kiểm soát hoàn toàn thị trường.";
+                else insight = "Phe Bán (Bears) đang chiếm ưu thế. Ưu tiên các lệnh Bán xuống.";
+                document.getElementById('ai-insight').innerText = insight;
             }
 
-            updateBars(rsi) {
-                const bars = document.querySelectorAll('#momentumBars div');
-                bars.forEach(b => {
-                    const h = (Math.random() * 40) + (rsi * 0.6);
-                    b.style.height = Math.min(h, 100) + '%';
-                    b.style.backgroundColor = rsi > 50 ? '#10b98133' : '#ef444433';
-                });
-            }
+            // --- CÁC HÀM TOÁN HỌC CHUẨN TRADINGVIEW ---
 
-            calcRSI(data) {
-                let g = 0, l = 0;
-                const p = 14;
-                for (let i = data.length - p; i < data.length; i++) {
-                    let d = data[i] - data[i-1];
-                    if (d > 0) g += d; else l -= d;
+            // Tính RSI chuẩn (Dùng Wilder's Smoothing)
+            calculateRSI(prices, period) {
+                if (prices.length < period + 1) return 50;
+                let gains = 0, losses = 0;
+                
+                // Tính SMA cho chu kỳ đầu tiên
+                for (let i = 1; i <= period; i++) {
+                    const diff = prices[i] - prices[i - 1];
+                    if (diff >= 0) gains += diff;
+                    else losses -= diff;
                 }
-                return 100 - (100 / (1 + (g/p) / (l/p || 1)));
+                let avgGain = gains / period;
+                let avgLoss = losses / period;
+
+                // Tính smoothed cho các nến tiếp theo
+                for (let i = period + 1; i < prices.length; i++) {
+                    const diff = prices[i] - prices[i - 1];
+                    const currentGain = diff >= 0 ? diff : 0;
+                    const currentLoss = diff < 0 ? -diff : 0;
+                    
+                    avgGain = ((avgGain * (period - 1)) + currentGain) / period;
+                    avgLoss = ((avgLoss * (period - 1)) + currentLoss) / period;
+                }
+
+                if (avgLoss === 0) return 100;
+                const rs = avgGain / avgLoss;
+                return 100 - (100 / (1 + rs));
             }
 
-            calcEMA(data, p) {
-                const k = 2 / (p + 1);
-                let ema = data[0];
-                for (let i = 1; i < data.length; i++) ema = data[i] * k + ema * (1 - k);
+            // Tính EMA (Exponential Moving Average)
+            calculateEMA(prices, period) {
+                if (prices.length < period) return prices[prices.length - 1];
+                const k = 2 / (period + 1);
+                // Bắt đầu EMA bằng SMA của chu kỳ đầu
+                let ema = prices.slice(0, period).reduce((a, b) => a + b, 0) / period;
+                
+                for (let i = period; i < prices.length; i++) {
+                    ema = (prices[i] - ema) * k + ema;
+                }
                 return ema;
             }
 
-            calcATR(c) {
-                let s = 0, p = 14;
-                const last = c.slice(-p);
-                for(let i=1; i<last.length; i++) {
-                    s += Math.max(last[i].high - last[i].low, Math.abs(last[i].high - last[i-1].close));
+            // Tính ATR (Average True Range)
+            calculateATR(candles, period) {
+                if (candles.length < period + 1) return 0;
+                let trs = [];
+                for (let i = 1; i < candles.length; i++) {
+                    const high = candles[i].high;
+                    const low = candles[i].low;
+                    const prevClose = candles[i-1].close;
+                    
+                    const tr = Math.max(
+                        high - low,
+                        Math.abs(high - prevClose),
+                        Math.abs(low - prevClose)
+                    );
+                    trs.push(tr);
                 }
-                return s / p;
+                
+                // Tính ATR hiện tại (SMA của TR)
+                const recentTRs = trs.slice(-period);
+                return recentTRs.reduce((a, b) => a + b, 0) / period;
             }
         }
 
-        window.onload = () => new QuantumApp();
+        // Khởi động Engine khi trang tải xong
+        window.onload = () => new TradingEngine();
     </script>
 </body>
 </html>
+
 
