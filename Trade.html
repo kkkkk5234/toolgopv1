@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QUANTUM AI | Siêu Phân Tích 1000 Nến</title>
+    <title>QUANTUM AI | ONUS Sync Edition</title>
     <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
         :root {
-            --bg-base: #0b0e14; /* Nền tối phong cách Binance */
+            --bg-base: #0b0e14;
             --bg-panel: #151a23;
             --border: #2b3139;
             --text-main: #eaecef;
@@ -28,9 +28,8 @@
             flex-direction: column;
         }
 
-        /* Header Layout */
         header {
-            height: 60px;
+            height: 65px;
             background-color: var(--bg-panel);
             border-bottom: 1px solid var(--border);
             display: flex;
@@ -40,26 +39,10 @@
             flex-shrink: 0;
         }
 
-        /* Main Workspace Layout */
-        .workspace {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-        }
+        .workspace { display: flex; flex: 1; overflow: hidden; }
+        .chart-container { flex: 1; position: relative; background-color: var(--bg-base); }
+        #tv-chart { width: 100%; height: 100%; }
 
-        /* Chart Area (Left) */
-        .chart-container {
-            flex: 1;
-            position: relative;
-            background-color: var(--bg-base);
-        }
-
-        #tv-chart {
-            width: 100%;
-            height: 100%;
-        }
-
-        /* Sidebar Area (Right) */
         .sidebar-right {
             width: 380px;
             background-color: var(--bg-panel);
@@ -69,45 +52,20 @@
             overflow-y: auto;
         }
 
-        /* Components */
-        .panel-box {
-            padding: 16px;
-            border-bottom: 1px solid var(--border);
-        }
-
+        .panel-box { padding: 16px; border-bottom: 1px solid var(--border); }
         .panel-title {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            font-weight: 600;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
+            font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;
+            font-weight: 600; margin-bottom: 12px; display: flex; align-items: center;
         }
-
-        .data-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-            font-size: 0.85rem;
-        }
-
+        .data-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.85rem; }
         .data-label { color: var(--text-muted); }
         .data-value { font-family: 'Courier New', Courier, monospace; font-weight: bold; }
 
         .btn-action {
-            width: 100%;
-            padding: 12px;
-            border-radius: 4px;
-            font-weight: bold;
-            text-align: center;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            transition: 0.2s;
+            width: 100%; padding: 12px; border-radius: 4px; font-weight: bold;
+            text-align: center; text-transform: uppercase; letter-spacing: 1px; transition: 0.2s;
         }
 
-        /* Tùy chỉnh thanh cuộn cho Sidebar */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: var(--bg-panel); }
         ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
@@ -115,43 +73,54 @@
 
         .text-up { color: var(--up); }
         .text-down { color: var(--down); }
+        
+        /* Animation cho chớp giá */
+        @keyframes flashUp { 0% { background-color: rgba(14, 203, 129, 0.3); } 100% { background-color: transparent; } }
+        @keyframes flashDown { 0% { background-color: rgba(246, 70, 93, 0.3); } 100% { background-color: transparent; } }
+        .flash-up { animation: flashUp 0.5s ease-out; }
+        .flash-down { animation: flashDown 0.5s ease-out; }
     </style>
 </head>
 <body>
 
-    <!-- PHẦN HEADER -->
     <header>
         <div class="flex items-center space-x-6">
             <h1 class="text-blue-500 font-black text-xl tracking-wider">QUANTUM AI</h1>
-            <select id="pairSelect" class="bg-gray-800 text-white border border-gray-600 rounded px-3 py-1.5 outline-none font-bold">
-                <option value="TONVNDC">TON / VNDC (Tiền Việt)</option>
-                <option value="BTCVNDC">BTC / VNDC (Tiền Việt)</option>
-                <option value="BTCUSDT">BTC / USDT</option>
-                <option value="ETHUSDT">ETH / USDT</option>
-                <option value="SOLUSDT">SOL / USDT</option>
-            </select>
-            <div class="flex flex-col">
-                <span id="header-price" class="text-2xl font-bold" style="font-family: monospace;">Đang tải...</span>
+            
+            <div class="flex items-center space-x-2">
+                <select id="pairSelect" class="bg-gray-800 text-white border border-gray-600 rounded px-3 py-1.5 outline-none font-bold">
+                    <option value="TONVNDC">TON / VNDC</option>
+                    <option value="BTCVNDC">BTC / VNDC</option>
+                    <option value="BTCUSDT">BTC / USDT</option>
+                    <option value="ETHUSDT">ETH / USDT</option>
+                </select>
+                
+                <!-- BỘ ĐỒNG BỘ TỶ GIÁ ONUS -->
+                <div id="rate-container" class="flex items-center bg-gray-900 border border-gray-700 rounded px-2 py-1 space-x-2" title="Nhập tỷ giá P2P USDT của ONUS vào đây để đồng bộ giá">
+                    <span class="text-xs text-gray-400">1 USDT =</span>
+                    <input type="number" id="customRate" value="25850" class="bg-transparent text-white text-sm font-mono w-16 outline-none text-right border-b border-gray-600 focus:border-blue-500 transition-colors">
+                    <span class="text-xs text-gray-400">VNDC</span>
+                    <button id="btnSync" class="ml-2 text-[10px] bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded transition">ĐỒNG BỘ</button>
+                </div>
+            </div>
+
+            <div class="flex flex-col ml-4">
+                <span id="header-price" class="text-2xl font-bold rounded px-2" style="font-family: monospace;">Đang tải...</span>
             </div>
         </div>
         
         <div class="flex items-center space-x-3">
             <div id="connectionStatus" class="flex items-center bg-gray-900 px-3 py-1.5 rounded border border-gray-700">
                 <div class="w-2 h-2 rounded-full bg-yellow-500 mr-2 animate-pulse" id="status-dot"></div>
-                <span class="text-xs font-bold text-gray-300" id="status-text">ĐANG KẾT NỐI API...</span>
+                <span class="text-xs font-bold text-gray-300" id="status-text">ĐANG KẾT NỐI...</span>
             </div>
         </div>
     </header>
 
-    <!-- PHẦN KHÔNG GIAN LÀM VIỆC -->
     <div class="workspace">
-        
-        <!-- BÊN TRÁI: BIỂU ĐỒ -->
         <main class="chart-container">
             <div id="tv-chart"></div>
-            
-            <!-- Hiển thị giá Open, High, Low, Close (OHLC) góc trái biểu đồ -->
-            <div class="absolute top-3 left-3 z-10 bg-gray-900 bg-opacity-80 p-2 rounded text-xs font-mono border border-gray-700 flex space-x-3">
+            <div class="absolute top-3 left-3 z-10 bg-gray-900 bg-opacity-80 p-2 rounded text-xs font-mono border border-gray-700 flex space-x-3 shadow-lg">
                 <div><span class="text-gray-400">Mở:</span> <span id="valO" class="text-white">--</span></div>
                 <div><span class="text-gray-400">Cao:</span> <span id="valH" class="text-white">--</span></div>
                 <div><span class="text-gray-400">Thấp:</span> <span id="valL" class="text-white">--</span></div>
@@ -159,10 +128,8 @@
             </div>
         </main>
 
-        <!-- BÊN PHẢI: BẢNG PHÂN TÍCH AI & THÔNG SỐ -->
         <aside class="sidebar-right">
             
-            <!-- 1. KHUYẾN NGHỊ HÀNH ĐỘNG -->
             <div class="panel-box bg-gray-900 bg-opacity-50">
                 <div class="panel-title text-blue-400">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
@@ -185,83 +152,63 @@
                 </div>
             </div>
 
-            <!-- 2. ĐIỂM VÀO LỆNH (ENTRY, SL, TP) -->
             <div class="panel-box">
                 <div class="panel-title">Cấu trúc Lệnh Đề Xuất</div>
                 <div class="grid grid-cols-2 gap-3">
-                    <div class="bg-gray-800 p-2 rounded border border-green-900">
-                        <div class="text-[10px] text-green-500 uppercase mb-1">Chốt lời (Take Profit)</div>
-                        <div id="val-tp" class="font-mono font-bold text-sm">--</div>
+                    <div class="bg-gray-800 p-2 rounded border border-green-900 shadow-inner">
+                        <div class="text-[10px] text-green-500 uppercase mb-1">Chốt lời (TP)</div>
+                        <div id="val-tp" class="font-mono font-bold text-sm text-white">--</div>
                     </div>
-                    <div class="bg-gray-800 p-2 rounded border border-red-900">
-                        <div class="text-[10px] text-red-500 uppercase mb-1">Dừng lỗ (Stop Loss)</div>
-                        <div id="val-sl" class="font-mono font-bold text-sm">--</div>
+                    <div class="bg-gray-800 p-2 rounded border border-red-900 shadow-inner">
+                        <div class="text-[10px] text-red-500 uppercase mb-1">Dừng lỗ (SL)</div>
+                        <div id="val-sl" class="font-mono font-bold text-sm text-white">--</div>
                     </div>
                 </div>
                 <div class="mt-3 text-[11px] text-gray-400 italic" id="trade-logic">
-                    Đang tính toán ATR và biên độ giá...
+                    Đang tính toán ATR...
                 </div>
             </div>
 
-            <!-- 3. THÔNG SỐ KỸ THUẬT THỰC TẾ (1000 NẾN) -->
             <div class="panel-box">
-                <div class="panel-title">Chỉ báo Kỹ thuật (Real-time)</div>
+                <div class="panel-title">Chỉ báo Kỹ thuật (1000 Nến)</div>
                 <div class="data-row">
-                    <span class="data-label">RSI (Sức mạnh tương đối)</span>
+                    <span class="data-label">RSI (Chu kỳ 14)</span>
                     <span id="val-rsi" class="data-value">--</span>
                 </div>
                 <div class="data-row">
-                    <span class="data-label">EMA 50 (Trung bình ngắn)</span>
+                    <span class="data-label">EMA 50</span>
                     <span id="val-ema50" class="data-value">--</span>
                 </div>
                 <div class="data-row">
-                    <span class="data-label">EMA 200 (Trung bình dài)</span>
+                    <span class="data-label">EMA 200</span>
                     <span id="val-ema200" class="data-value">--</span>
                 </div>
                 <div class="data-row">
-                    <span class="data-label">ATR (Biến động giá)</span>
+                    <span class="data-label">ATR (Biến động)</span>
                     <span id="val-atr" class="data-value">--</span>
-                </div>
-                <div class="data-row">
-                    <span class="data-label">Khối lượng 24h</span>
-                    <span id="val-vol24" class="data-value">--</span>
                 </div>
             </div>
 
-            <!-- 4. PHÂN TÍCH DÒNG TIỀN -->
             <div class="panel-box flex-1">
                 <div class="panel-title">Động lượng Thị trường</div>
                 <div class="w-full bg-gray-800 h-2 rounded-full mb-2 overflow-hidden flex">
-                    <div id="bull-power" class="bg-green-500 h-full" style="width: 50%;"></div>
-                    <div id="bear-power" class="bg-red-500 h-full" style="width: 50%;"></div>
+                    <div id="bull-power" class="bg-green-500 h-full transition-all duration-500" style="width: 50%;"></div>
+                    <div id="bear-power" class="bg-red-500 h-full transition-all duration-500" style="width: 50%;"></div>
                 </div>
                 <div class="flex justify-between text-[10px] text-gray-500 mb-4">
                     <span>Lực Mua</span>
                     <span>Lực Bán</span>
                 </div>
                 
-                <div class="text-[11px] text-gray-400 leading-relaxed bg-gray-800 p-3 rounded" id="ai-insight">
-                    Thu thập đủ 1000 nến để kích hoạt siêu cấu trúc phân tích dòng tiền...
+                <div class="text-[11px] text-gray-400 leading-relaxed bg-gray-800 p-3 rounded border border-gray-700" id="ai-insight">
+                    Đang quét dữ liệu lịch sử...
                 </div>
             </div>
-
         </aside>
     </div>
 
     <script>
-        /**
-         * QUANTUM AI v6.0 - REAL DATA ENGINE
-         * - Xử lý 1000 nến
-         * - Thuật toán RSI chuẩn (Wilder's Smoothing)
-         * - Tích hợp VNDC
-         */
-
-        const API_NODES = [
-            'https://api.binance.com/api/v3',
-            'https://api1.binance.com/api/v3',
-            'https://api2.binance.com/api/v3'
-        ];
-        const USDT_VNDC_RATE = 25450; // Tỷ giá VNĐ
+        const API_NODES = ['https://api.binance.com/api/v3', 'https://api1.binance.com/api/v3'];
 
         class TradingEngine {
             constructor() {
@@ -271,21 +218,76 @@
                 this.chart = null;
                 this.candleSeries = null;
                 this.history = [];
+                this.rawBinanceHistory = []; // Lưu giá gốc USDT
                 this.ws = null;
+                this.lastPrice = 0;
 
                 this.initUI();
                 this.initChart();
                 this.fetchHistoricalData();
             }
 
+            getRate() {
+                if (!this.isVndc) return 1;
+                const rateVal = parseFloat(document.getElementById('customRate').value);
+                return isNaN(rateVal) ? 25850 : rateVal;
+            }
+
             initUI() {
-                document.getElementById('pairSelect').addEventListener('change', (e) => {
+                const pairSelect = document.getElementById('pairSelect');
+                const rateContainer = document.getElementById('rate-container');
+                const btnSync = document.getElementById('btnSync');
+
+                pairSelect.addEventListener('change', (e) => {
                     this.pair = e.target.value;
                     this.isVndc = this.pair.includes('VNDC');
                     this.baseSymbol = this.pair.replace('VNDC', 'USDT');
+                    
+                    // Hiện/ẩn bộ chỉnh tỷ giá tùy theo cặp tiền
+                    rateContainer.style.display = this.isVndc ? 'flex' : 'none';
+                    
                     this.setStatus("ĐANG ĐỔI CẶP...", "yellow");
                     this.fetchHistoricalData();
                 });
+
+                btnSync.addEventListener('click', () => {
+                    this.applyCustomRate();
+                });
+
+                // Cho phép ấn Enter để đồng bộ tỷ giá
+                document.getElementById('customRate').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.applyCustomRate();
+                });
+            }
+
+            applyCustomRate() {
+                if(!this.isVndc || this.rawBinanceHistory.length === 0) return;
+                
+                const btn = document.getElementById('btnSync');
+                btn.innerText = "OK!";
+                btn.className = "ml-2 text-[10px] bg-green-600 text-white px-2 py-1 rounded";
+                
+                // Cập nhật lại biểu đồ dựa trên giá gốc nhân với tỷ giá mới
+                const rate = this.getRate();
+                this.history = this.rawBinanceHistory.map(d => ({
+                    time: d.time,
+                    open: d.open * rate,
+                    high: d.high * rate,
+                    low: d.low * rate,
+                    close: d.close * rate,
+                    volume: d.volume
+                }));
+                
+                this.candleSeries.setData(this.history);
+                this.runDeepAnalysis();
+                
+                // Cập nhật lại Header với giá nến cuối
+                this.updateHeaderPrices(this.history[this.history.length-1]);
+
+                setTimeout(() => {
+                    btn.innerText = "ĐỒNG BỘ";
+                    btn.className = "ml-2 text-[10px] bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded transition";
+                }, 1000);
             }
 
             initChart() {
@@ -321,29 +323,39 @@
 
             async fetchHistoricalData() {
                 let success = false;
-                // YÊU CẦU: Tải 1000 nến để phân tích cấu trúc siêu dài
                 for (const node of API_NODES) {
                     try {
                         const response = await fetch(`${node}/klines?symbol=${this.baseSymbol}&interval=1h&limit=1000`);
                         if (!response.ok) continue;
                         
                         const data = await response.json();
-                        const multiplier = this.isVndc ? USDT_VNDC_RATE : 1;
+                        const rate = this.getRate();
                         
-                        this.history = data.map(d => ({
+                        // Lưu giá gốc (USDT) để sau này đổi tỷ giá không cần fetch lại API
+                        this.rawBinanceHistory = data.map(d => ({
                             time: d[0] / 1000,
-                            open: parseFloat(d[1]) * multiplier,
-                            high: parseFloat(d[2]) * multiplier,
-                            low: parseFloat(d[3]) * multiplier,
-                            close: parseFloat(d[4]) * multiplier,
+                            open: parseFloat(d[1]),
+                            high: parseFloat(d[2]),
+                            low: parseFloat(d[3]),
+                            close: parseFloat(d[4]),
                             volume: parseFloat(d[5])
+                        }));
+
+                        // Tính toán mảng lịch sử hiển thị
+                        this.history = this.rawBinanceHistory.map(d => ({
+                            time: d.time,
+                            open: d.open * rate,
+                            high: d.high * rate,
+                            low: d.low * rate,
+                            close: d.close * rate,
+                            volume: d.volume
                         }));
 
                         this.candleSeries.setData(this.history);
                         success = true;
                         this.setStatus("TRỰC TUYẾN (1000 NẾN)", "green");
                         break;
-                    } catch (err) { console.warn("Lỗi Node API:", node); }
+                    } catch (err) { console.warn("Lỗi Node:", node); }
                 }
 
                 if (success) {
@@ -362,27 +374,37 @@
                 this.ws.onmessage = (event) => {
                     const msg = JSON.parse(event.data);
                     const k = msg.k;
-                    const multiplier = this.isVndc ? USDT_VNDC_RATE : 1;
+                    const rate = this.getRate();
                     
-                    const candle = {
-                        time: k.t / 1000,
-                        open: parseFloat(k.o) * multiplier,
-                        high: parseFloat(k.h) * multiplier,
-                        low: parseFloat(k.l) * multiplier,
-                        close: parseFloat(k.c) * multiplier,
-                        volume: parseFloat(k.v)
+                    // Nến gốc USDT
+                    const rawCandle = {
+                        time: k.t / 1000, open: parseFloat(k.o), high: parseFloat(k.h),
+                        low: parseFloat(k.l), close: parseFloat(k.c), volume: parseFloat(k.v)
                     };
 
-                    this.candleSeries.update(candle);
-                    this.updateHeaderPrices(candle);
+                    // Nến hiển thị
+                    const displayCandle = {
+                        time: rawCandle.time,
+                        open: rawCandle.open * rate, high: rawCandle.high * rate,
+                        low: rawCandle.low * rate, close: rawCandle.close * rate,
+                        volume: rawCandle.volume
+                    };
 
-                    // Cập nhật mảng lịch sử nội bộ
-                    const lastIdx = this.history.length - 1;
-                    if (this.history[lastIdx].time === candle.time) {
-                        this.history[lastIdx] = candle;
+                    this.candleSeries.update(displayCandle);
+                    this.updateHeaderPrices(displayCandle);
+
+                    // Cập nhật mảng gốc
+                    const lastIdx = this.rawBinanceHistory.length - 1;
+                    if (this.rawBinanceHistory[lastIdx].time === rawCandle.time) {
+                        this.rawBinanceHistory[lastIdx] = rawCandle;
+                        this.history[lastIdx] = displayCandle;
                     } else {
-                        this.history.push(candle);
-                        if (this.history.length > 1000) this.history.shift(); // Giữ tối đa 1000 nến
+                        this.rawBinanceHistory.push(rawCandle);
+                        this.history.push(displayCandle);
+                        if (this.rawBinanceHistory.length > 1000) {
+                            this.rawBinanceHistory.shift();
+                            this.history.shift();
+                        }
                     }
 
                     this.runDeepAnalysis();
@@ -391,8 +413,18 @@
 
             updateHeaderPrices(c) {
                 const headerP = document.getElementById('header-price');
-                headerP.innerText = this.formatPrice(c.close) + (this.isVndc ? " VNDC" : " USDT");
-                headerP.className = `text-2xl font-bold ${c.close >= c.open ? 'text-up' : 'text-down'}`;
+                const priceText = this.formatPrice(c.close) + (this.isVndc ? " VNDC" : " USDT");
+                
+                // Hiệu ứng chớp màu khi giá thay đổi
+                if (this.lastPrice > 0 && c.close !== this.lastPrice) {
+                    headerP.classList.remove('flash-up', 'flash-down');
+                    void headerP.offsetWidth; // Trigger reflow
+                    headerP.classList.add(c.close > this.lastPrice ? 'flash-up' : 'flash-down');
+                }
+                
+                headerP.innerText = priceText;
+                headerP.style.color = c.close >= c.open ? '#0ecb81' : '#f6465d';
+                this.lastPrice = c.close;
 
                 document.getElementById('valO').innerText = this.formatPrice(c.open);
                 document.getElementById('valH').innerText = this.formatPrice(c.high);
@@ -400,39 +432,27 @@
                 document.getElementById('valC').innerText = this.formatPrice(c.close);
             }
 
-            // ==========================================
-            // SIÊU CẤU TRÚC PHÂN TÍCH TOÁN HỌC (REAL DATA)
-            // ==========================================
             runDeepAnalysis() {
-                if (this.history.length < 250) return; // Cần đủ dữ liệu để tính EMA200 chính xác
+                if (this.history.length < 250) return;
 
                 const closes = this.history.map(c => c.close);
                 const currentPrice = closes[closes.length - 1];
 
-                // 1. Tính toán các chỉ báo thực tế
                 const rsi = this.calculateRSI(closes, 14);
                 const ema50 = this.calculateEMA(closes, 50);
                 const ema200 = this.calculateEMA(closes, 200);
                 const atr = this.calculateATR(this.history, 14);
-                
-                // Khối lượng 24h
-                const vol24hArray = this.history.slice(-24).map(c => c.volume);
-                const vol24h = vol24hArray.reduce((a, b) => a + b, 0);
 
-                // 2. Cập nhật UI thông số kỹ thuật
                 document.getElementById('val-rsi').innerText = rsi.toFixed(2);
                 document.getElementById('val-rsi').className = `data-value ${rsi > 70 ? 'text-down' : rsi < 30 ? 'text-up' : ''}`;
                 document.getElementById('val-ema50').innerText = this.formatPrice(ema50);
                 document.getElementById('val-ema200').innerText = this.formatPrice(ema200);
                 document.getElementById('val-atr').innerText = this.formatPrice(atr);
-                document.getElementById('val-vol24').innerText = (vol24h / 1000).toFixed(1) + "K";
 
-                // 3. Logic Đánh Giá Hành Động Mua/Bán (AI Scoring)
-                let aiScore = 50; // Điểm trung lập
+                let aiScore = 50;
                 let trendText = "ĐI NGANG";
                 let isUpTrend = false;
 
-                // Đánh giá Xu hướng (Trend)
                 if (currentPrice > ema50 && ema50 > ema200) {
                     aiScore += 20; trendText = "TĂNG MẠNH"; isUpTrend = true;
                 } else if (currentPrice > ema200) {
@@ -443,21 +463,15 @@
                     aiScore -= 10; trendText = "GIẢM NHẸ"; isUpTrend = false;
                 }
 
-                // Đánh giá RSI
-                if (rsi < 30) aiScore += 15; // Quá bán -> Tín hiệu Mua
-                if (rsi > 70) aiScore -= 15; // Quá mua -> Tín hiệu Bán
+                if (rsi < 30) aiScore += 15;
+                if (rsi > 70) aiScore -= 15;
 
-                // Giới hạn điểm 0-100
                 aiScore = Math.max(5, Math.min(95, aiScore));
 
-                // 4. Render Nút Khuyến Nghị
                 const actionBox = document.getElementById('action-box');
-                const winRate = document.getElementById('ai-winrate');
-                const trendUI = document.getElementById('ai-trend');
-
-                winRate.innerText = aiScore.toFixed(0) + "%";
-                trendUI.innerText = trendText;
-                trendUI.className = `text-lg font-bold mt-1 ${isUpTrend ? 'text-up' : 'text-down'}`;
+                document.getElementById('ai-winrate').innerText = aiScore.toFixed(0) + "%";
+                document.getElementById('ai-trend').innerText = trendText;
+                document.getElementById('ai-trend').className = `text-lg font-bold mt-1 ${isUpTrend ? 'text-up' : 'text-down'}`;
 
                 if (aiScore >= 70) {
                     actionBox.innerText = "NÊN MUA MẠNH";
@@ -472,104 +486,68 @@
                     actionBox.innerText = "NÊN BÁN";
                     actionBox.className = "btn-action bg-red-900 text-red-400 border border-red-700";
                 } else {
-                    actionBox.innerText = "ĐỨNG NGOÀI (QUAN SÁT)";
+                    actionBox.innerText = "ĐỨNG NGOÀI";
                     actionBox.className = "btn-action bg-gray-700 text-gray-300 border border-gray-600";
                 }
 
-                // 5. Render Take Profit / Stop Loss dựa trên ATR (Biến động thực tế)
-                // SL = 1.5 ATR, TP = 3 ATR (Tỉ lệ RR 1:2)
                 const slPrice = isUpTrend ? currentPrice - (atr * 1.5) : currentPrice + (atr * 1.5);
                 const tpPrice = isUpTrend ? currentPrice + (atr * 3.0) : currentPrice - (atr * 3.0);
                 
                 document.getElementById('val-tp').innerText = this.formatPrice(tpPrice);
-                document.getElementById('val-tp').className = `font-mono font-bold text-sm ${isUpTrend ? 'text-up' : 'text-down'}`;
-                
                 document.getElementById('val-sl').innerText = this.formatPrice(slPrice);
-                document.getElementById('val-sl').className = `font-mono font-bold text-sm ${isUpTrend ? 'text-down' : 'text-up'}`;
+                document.getElementById('trade-logic').innerText = `Giao dịch theo xu hướng - Rủi ro: 1 ATR, Lợi nhuận: 2 ATR`;
 
-                document.getElementById('trade-logic').innerText = `Lệnh ${isUpTrend?'Long/Mua':'Short/Bán'} - Tỷ lệ Lợi nhuận/Rủi ro: 1:2 (Tính theo ATR)`;
-
-                // 6. Cập nhật Động lượng (Thanh màu)
                 document.getElementById('bull-power').style.width = `${aiScore}%`;
                 document.getElementById('bear-power').style.width = `${100 - aiScore}%`;
 
-                // Render Insight Text
                 let insight = "";
-                if(rsi > 70) insight = "RSI đang ở mức Quá Mua. Cẩn thận rủi ro đảo chiều giảm giá.";
-                else if (rsi < 30) insight = "RSI chạm Quá Bán. Có thể bắt đáy ăn sóng hồi.";
-                else if (currentPrice > ema200) insight = "Giá nằm trên EMA200. Phe Mua (Bulls) đang kiểm soát hoàn toàn thị trường.";
-                else insight = "Phe Bán (Bears) đang chiếm ưu thế. Ưu tiên các lệnh Bán xuống.";
+                if(rsi > 70) insight = "RSI ở mức Quá Mua. Dòng tiền có dấu hiệu chốt lời, cẩn thận rủi ro đảo chiều.";
+                else if (rsi < 30) insight = "RSI chạm Quá Bán. Lực bán cạn kiệt, xem xét rải vốn gom hàng.";
+                else if (currentPrice > ema200) insight = "Giá duy trì trên EMA200. Xu hướng dài hạn đang ủng hộ phe Mua.";
+                else insight = "Xu hướng dài hạn đang xấu do giá nằm dưới EMA200. Hạn chế bắt đáy.";
                 document.getElementById('ai-insight').innerText = insight;
             }
 
-            // --- CÁC HÀM TOÁN HỌC CHUẨN TRADINGVIEW ---
-
-            // Tính RSI chuẩn (Dùng Wilder's Smoothing)
             calculateRSI(prices, period) {
                 if (prices.length < period + 1) return 50;
                 let gains = 0, losses = 0;
-                
-                // Tính SMA cho chu kỳ đầu tiên
                 for (let i = 1; i <= period; i++) {
                     const diff = prices[i] - prices[i - 1];
-                    if (diff >= 0) gains += diff;
-                    else losses -= diff;
+                    if (diff >= 0) gains += diff; else losses -= diff;
                 }
-                let avgGain = gains / period;
-                let avgLoss = losses / period;
-
-                // Tính smoothed cho các nến tiếp theo
+                let avgGain = gains / period, avgLoss = losses / period;
                 for (let i = period + 1; i < prices.length; i++) {
                     const diff = prices[i] - prices[i - 1];
-                    const currentGain = diff >= 0 ? diff : 0;
-                    const currentLoss = diff < 0 ? -diff : 0;
-                    
+                    const currentGain = diff >= 0 ? diff : 0, currentLoss = diff < 0 ? -diff : 0;
                     avgGain = ((avgGain * (period - 1)) + currentGain) / period;
                     avgLoss = ((avgLoss * (period - 1)) + currentLoss) / period;
                 }
-
                 if (avgLoss === 0) return 100;
-                const rs = avgGain / avgLoss;
-                return 100 - (100 / (1 + rs));
+                return 100 - (100 / (1 + (avgGain / avgLoss)));
             }
 
-            // Tính EMA (Exponential Moving Average)
             calculateEMA(prices, period) {
                 if (prices.length < period) return prices[prices.length - 1];
                 const k = 2 / (period + 1);
-                // Bắt đầu EMA bằng SMA của chu kỳ đầu
                 let ema = prices.slice(0, period).reduce((a, b) => a + b, 0) / period;
-                
-                for (let i = period; i < prices.length; i++) {
-                    ema = (prices[i] - ema) * k + ema;
-                }
+                for (let i = period; i < prices.length; i++) ema = (prices[i] - ema) * k + ema;
                 return ema;
             }
 
-            // Tính ATR (Average True Range)
             calculateATR(candles, period) {
                 if (candles.length < period + 1) return 0;
                 let trs = [];
                 for (let i = 1; i < candles.length; i++) {
-                    const high = candles[i].high;
-                    const low = candles[i].low;
-                    const prevClose = candles[i-1].close;
-                    
-                    const tr = Math.max(
-                        high - low,
-                        Math.abs(high - prevClose),
-                        Math.abs(low - prevClose)
-                    );
-                    trs.push(tr);
+                    trs.push(Math.max(
+                        candles[i].high - candles[i].low,
+                        Math.abs(candles[i].high - candles[i-1].close),
+                        Math.abs(candles[i].low - candles[i-1].close)
+                    ));
                 }
-                
-                // Tính ATR hiện tại (SMA của TR)
-                const recentTRs = trs.slice(-period);
-                return recentTRs.reduce((a, b) => a + b, 0) / period;
+                return trs.slice(-period).reduce((a, b) => a + b, 0) / period;
             }
         }
 
-        // Khởi động Engine khi trang tải xong
         window.onload = () => new TradingEngine();
     </script>
 </body>
