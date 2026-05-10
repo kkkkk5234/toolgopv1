@@ -1,0 +1,309 @@
+(function() {
+    'use strict';
+
+    // 1. CONSTANTS & CONFIG
+    const STORAGE_KEY = 'GEMINI_OVERLAY_KEY';
+    const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+    const ID_PREFIX = 'g-cli-';
+
+    if (document.getElementById(`${ID_PREFIX}container`)) {
+        console.log("Gemini Overlay is already running!");
+        return;
+    }
+
+    // 2. STYLES (Glassmorphism + Neon)
+    const styles = `
+        #${ID_PREFIX}container {
+            position: fixed; top: 50px; right: 50px; width: 400px; height: 550px;
+            z-index: 2147483647; font-family: 'Segoe UI', Roboto, sans-serif;
+            background: rgba(15, 15, 20, 0.85); backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 15px rgba(0, 243, 255, 0.1);
+            display: flex; flex-direction: column; overflow: hidden;
+            color: #e0e0e0; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s;
+        }
+        #${ID_PREFIX}header {
+            padding: 12px 16px; background: rgba(255, 255, 255, 0.05);
+            cursor: move; display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        #${ID_PREFIX}header b { color: #00f3ff; text-shadow: 0 0 8px rgba(0, 243, 255, 0.5); font-size: 14px; }
+        .g-btn-group { display: flex; gap: 8px; }
+        .g-btn { background: none; border: none; color: #aaa; cursor: pointer; font-size: 18px; padding: 0 4px; }
+        .g-btn:hover { color: #fff; }
+        
+        #${ID_PREFIX}content { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 15px; }
+        
+        /* State 1: API Setup */
+        .g-setup-screen { display: flex; flex-direction: column; gap: 15px; justify-content: center; height: 100%; }
+        .g-input-wrapper { position: relative; }
+        .g-input { 
+            width: 100%; padding: 12px; background: rgba(255,255,255,0.05); 
+            border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; box-sizing: border-box;
+        }
+        .g-input:focus { border-color: #7000ff; outline: none; box-shadow: 0 0 10px rgba(112, 0, 255, 0.3); }
+        .g-primary-btn { 
+            background: linear-gradient(135deg, #7000ff, #00f3ff); border: none; padding: 12px; 
+            border-radius: 8px; color: white; font-weight: bold; cursor: pointer; transition: 0.2s;
+        }
+        .g-primary-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        /* State 2: Chat */
+        #${ID_PREFIX}chat-area { flex: 1; overflow-y: auto; margin-bottom: 15px; scroll-behavior: smooth; padding-right: 5px; }
+        #${ID_PREFIX}chat-area::-webkit-scrollbar { width: 4px; }
+        #${ID_PREFIX}chat-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        
+        .g-msg { margin-bottom: 12px; line-height: 1.5; font-size: 14px; }
+        .g-msg-user { color: #00f3ff; font-weight: 600; margin-bottom: 4px; }
+        .g-msg-ai { background: rgba(255,255,255,0.03); padding: 10px; border-radius: 8px; border-left: 3px solid #7000ff; }
+        
+        .g-input-box { display: flex; flex-direction: column; gap: 8px; }
+        #${ID_PREFIX}textarea { 
+            width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); 
+            border-radius: 8px; color: #fff; padding: 10px; resize: none; box-sizing: border-box;
+        }
+
+        /* Markdown & Code */
+        pre { background: #1a1a1a; padding: 10px; border-radius: 6px; overflow-x: auto; position: relative; border: 1px solid #333; }
+        code { font-family: 'Consolas', monospace; color: #e67e22; }
+        .copy-btn { position: absolute; top: 5px; right: 5px; font-size: 10px; background: #333; color: #eee; border: none; padding: 3px 6px; border-radius: 4px; cursor: pointer; }
+        
+        /* Utils */
+        .hidden { display: none !important; }
+        .loading-dot { display: inline-block; width: 8px; height: 8px; background: #00f3ff; border-radius: 50%; animation: blink 1.4s infinite both; }
+        @keyframes blink { 0%, 80%, 100% { opacity: 0; } 40% { opacity: 1; } }
+    `;
+
+    // 3. UI GENERATOR
+    const container = document.createElement('div');
+    container.id = `${ID_PREFIX}container`;
+    
+    const styleTag = document.createElement('style');
+    styleTag.innerHTML = styles;
+    document.head.appendChild(styleTag);
+
+    container.innerHTML = `
+        <div id="${ID_PREFIX}header">
+            <b>GEMINI CLI OVERLAY</b>
+            <div class="g-btn-group">
+                <button class="g-btn" id="${ID_PREFIX}config-btn" title="API Settings">⚙️</button>
+                <button class="g-btn" id="${ID_PREFIX}min-btn">—</button>
+                <button class="g-btn" id="${ID_PREFIX}close-btn">×</button>
+            </div>
+        </div>
+        <div id="${ID_PREFIX}content">
+            <!-- Setup Screen -->
+            <div id="${ID_PREFIX}setup" class="g-setup-screen hidden">
+                <div style="text-align:center; margin-bottom:10px">
+                    <span style="font-size:24px">💎</span>
+                    <p style="font-size:12px; color:#888">Enter your Gemini API Key to start</p>
+                </div>
+                <div class="g-input-wrapper">
+                    <input type="password" id="${ID_PREFIX}api-key-input" class="g-input" placeholder="Paste API Key here...">
+                    <span id="${ID_PREFIX}toggle-pass" style="position:absolute; right:10px; top:10px; cursor:pointer">👁️</span>
+                </div>
+                <button id="${ID_PREFIX}save-key" class="g-primary-btn">Save & Continue</button>
+                <p id="${ID_PREFIX}error" style="color:#ff4d4d; font-size:11px; text-align:center"></p>
+            </div>
+
+            <!-- Chat Screen -->
+            <div id="${ID_PREFIX}chat-screen" class="hidden" style="display:flex; flex-direction:column; height:100%">
+                <div id="${ID_PREFIX}chat-area"></div>
+                <div class="g-input-box">
+                    <textarea id="${ID_PREFIX}textarea" rows="3" placeholder="Ask Gemini anything..."></textarea>
+                    <div style="display:flex; justify-content:space-between; align-items:center">
+                        <span style="font-size:10px; color:#555">Shift + Enter for new line</span>
+                        <button id="${ID_PREFIX}send-btn" class="g-primary-btn" style="padding: 6px 20px">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="${ID_PREFIX}resize-handle" style="position:absolute; bottom:0; right:0; width:15px; height:15px; cursor:nwse-resize; background:linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.1) 50%)"></div>
+    `;
+
+    document.body.appendChild(container);
+
+    // 4. CORE LOGIC
+    const elements = {
+        setup: document.getElementById(`${ID_PREFIX}setup`),
+        chatScreen: document.getElementById(`${ID_PREFIX}chat-screen`),
+        keyInput: document.getElementById(`${ID_PREFIX}api-key-input`),
+        saveBtn: document.getElementById(`${ID_PREFIX}save-key`),
+        chatArea: document.getElementById(`${ID_PREFIX}chat-area`),
+        textarea: document.getElementById(`${ID_PREFIX}textarea`),
+        sendBtn: document.getElementById(`${ID_PREFIX}send-btn`),
+        error: document.getElementById(`${ID_PREFIX}error`),
+        configBtn: document.getElementById(`${ID_PREFIX}config-btn`),
+        togglePass: document.getElementById(`${ID_PREFIX}toggle-pass`)
+    };
+
+    let chatHistory = [];
+
+    const init = () => {
+        const savedKey = localStorage.getItem(STORAGE_KEY);
+        if (savedKey) {
+            showChat();
+        } else {
+            showSetup();
+        }
+    };
+
+    const showSetup = () => {
+        elements.setup.classList.remove('hidden');
+        elements.chatScreen.classList.add('hidden');
+        elements.keyInput.value = localStorage.getItem(STORAGE_KEY) || '';
+    };
+
+    const showChat = () => {
+        elements.setup.classList.add('hidden');
+        elements.chatScreen.classList.remove('hidden');
+    };
+
+    // 5. API HANDLER
+    const askGemini = async (prompt) => {
+        const apiKey = localStorage.getItem(STORAGE_KEY);
+        appendMessage('AI', '<div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div>');
+        
+        try {
+            const response = await fetch(`${API_URL}?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }]
+                })
+            });
+
+            const data = await response.json();
+            const lastMsg = elements.chatArea.lastElementChild;
+            
+            if (data.error) {
+                lastMsg.querySelector('.g-msg-ai').innerText = `Error: ${data.error.message}`;
+            } else {
+                const aiText = data.candidates[0].content.parts[0].text;
+                lastMsg.querySelector('.g-msg-ai').innerHTML = parseMarkdown(aiText);
+                addCopyFunctionality();
+            }
+        } catch (err) {
+            elements.chatArea.lastElementChild.querySelector('.g-msg-ai').innerText = "Network Error. Please check API Key.";
+        }
+        elements.chatArea.scrollTop = elements.chatArea.scrollHeight;
+    };
+
+    // 6. UTILS (Drag, Resize, Markdown)
+    const appendMessage = (role, text) => {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'g-msg';
+        msgDiv.innerHTML = `
+            <div class="g-msg-${role.toLowerCase()}">${role === 'AI' ? '✨ Gemini' : '👤 You'}</div>
+            <div class="g-msg-ai">${text}</div>
+        `;
+        elements.chatArea.appendChild(msgDiv);
+        elements.chatArea.scrollTop = elements.chatArea.scrollHeight;
+    };
+
+    const parseMarkdown = (text) => {
+        // Simple Markdown parser
+        return text
+            .replace(/```(\w+)?([\s\S]*?)```/g, (_, lang, code) => `<pre><code>${code.trim()}</code><button class="copy-btn">Copy</button></pre>`)
+            .replace(/`([^`]+)`/g, '<code>$1</code>')
+            .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+            .replace(/\n/g, '<br>');
+    };
+
+    const addCopyFunctionality = () => {
+        document.querySelectorAll('.copy-btn').forEach(btn => {
+            btn.onclick = () => {
+                const code = btn.previousElementSibling.innerText;
+                navigator.clipboard.writeText(code);
+                btn.innerText = 'Copied!';
+                setTimeout(() => btn.innerText = 'Copy', 2000);
+            };
+        });
+    };
+
+    // Dragging Logic
+    const header = document.getElementById(`${ID_PREFIX}header`);
+    let isDragging = false, offset = [0,0];
+
+    header.onmousedown = (e) => {
+        isDragging = true;
+        offset = [container.offsetLeft - e.clientX, container.offsetTop - e.clientY];
+    };
+    document.onmousemove = (e) => {
+        if (isDragging) {
+            container.style.left = (e.clientX + offset[0]) + 'px';
+            container.style.top = (e.clientY + offset[1]) + 'px';
+            container.style.right = 'auto';
+        }
+    };
+    document.onmouseup = () => isDragging = false;
+
+    // Resizing Logic
+    const handle = document.getElementById(`${ID_PREFIX}resize-handle`);
+    handle.onmousedown = (e) => {
+        e.preventDefault();
+        const startWidth = container.offsetWidth;
+        const startHeight = container.offsetHeight;
+        const startX = e.clientX;
+        const startY = e.clientY;
+
+        const doResize = (ev) => {
+            container.style.width = (startWidth + ev.clientX - startX) + 'px';
+            container.style.height = (startHeight + ev.clientY - startY) + 'px';
+        };
+        const stopResize = () => {
+            document.removeEventListener('mousemove', doResize);
+            document.removeEventListener('mouseup', stopResize);
+        };
+        document.addEventListener('mousemove', doResize);
+        document.addEventListener('mouseup', stopResize);
+    };
+
+    // 7. EVENTS
+    elements.saveBtn.onclick = () => {
+        const key = elements.keyInput.value.trim();
+        if (key.length < 10) {
+            elements.error.innerText = "Invalid API Key format.";
+            return;
+        }
+        localStorage.setItem(STORAGE_KEY, key);
+        showChat();
+    };
+
+    elements.togglePass.onclick = () => {
+        const type = elements.keyInput.type === 'password' ? 'text' : 'password';
+        elements.keyInput.type = type;
+        elements.togglePass.innerText = type === 'password' ? '👁️' : '🔒';
+    };
+
+    elements.configBtn.onclick = showSetup;
+
+    const handleSend = () => {
+        const val = elements.textarea.value.trim();
+        if (!val) return;
+        appendMessage('User', val);
+        elements.textarea.value = '';
+        askGemini(val);
+    };
+
+    elements.sendBtn.onclick = handleSend;
+    elements.textarea.onkeydown = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSend();
+        }
+    };
+
+    document.getElementById(`${ID_PREFIX}close-btn`).onclick = () => container.remove();
+    document.getElementById(`${ID_PREFIX}min-btn`).onclick = () => {
+        const isMin = container.style.height === '45px';
+        container.style.height = isMin ? '550px' : '45px';
+        elements.content.classList.toggle('hidden');
+    };
+
+    init();
+    console.log("%c Gemini CLI Overlay Loaded! ", "background: #7000ff; color: #fff; padding: 5px; border-radius: 5px;");
+})();
+
+AIzaSyC_fsZQMpjmm5-ozWNpbmO8Gqxk5TXctXM
+
