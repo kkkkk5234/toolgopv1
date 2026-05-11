@@ -305,5 +305,5 @@
     console.log("%c Gemini CLI Overlay Loaded! ", "background: #7000ff; color: #fff; padding: 5px; border-radius: 5px;");
 })();
 
-AIzaSyC_fsZQMpjmm5-ozWNpbmO8Gqxk5TXctXM
+
 
