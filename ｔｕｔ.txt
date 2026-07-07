@@ -1,30 +1,37 @@
-Tut 1
-time: 1 -7 day
-
-IP JAPAN + NGÔN NGỮ JAPAN (NGÂM TRÊN 3 TIẾNG )
+IP JAPAN + NGÔN NGỮ JAPAN (NGÂM TRÊN 3 TIẾNG 30 PHÚT )
 
 
-https://m.facebook.com/help/contact/268228883256323 { 2 TAB }
+https://www.facebook.com/help/contact/268228883256323 { 2 TAB }
+Dòng 1: Chọn mục thứ 16
+Dòng 2: Thần chú 
+(Nếu có dòng điền gmail thì điền gmail liên kết với tài khoản)
 
 https://www.facebook.com/help/contact/288611514529252 (1 TAB )
- 
-subject:Unlock my account
+Dòng 1: Unlock my account
+Dòng 2: Thần chú
+Dòng 3: No
 
 https://www.facebook.com/help/contact/1417759018475333 ( 2 TAB )
+Dòng 1: Tên
+Dòng 2: Tên đệm
+Dòng 3: Họ 
+(Để giống trên ảnh cccd mặt trước)
+Dòng 4: Đính kèm ảnh cccd rõ nét mặt trước 
+Dòng 5: Điền gmail 
 
-https://m.facebook.com/help/contact/507287962650443 (2T TAB )
+https://www.facebook.com/help/contact/507287962650443 (2T TAB )
+Dòng 1: Thần chú
 
 https://www.facebook.com/help/contact/571927962827151 (1 TAB )
+Dòng 1: Thần chú
 
-Lưu ý: Những link như 323,443 cần f12 chuyển sang thiết bị Iphone 14 Pmx,Nếu có cccd mới đi link 333 nếu không thì không đi
-Tóm tát cách dùng:Mở đủ tất cả các tab yêu cầu kể cả tab 282 sau đó mới ngâm ip, trong quá trình làm không được tắt ip
+Tóm tát cách dùng:Mở đủ tất cả các tab + tab 282 > bật vpn ngâm > ngâm xong > f12 chuyển thành chế độ điện thoại thiết bị iphone 14 prm hoặc 12 pro > đổi tất cả đầu của url thành https://m.facebook.com/... > đi tất cả link > sau đó tắt vpn, xóa hết tab chỉ giữ lại tab 282 > đợi 10p sau đó tiếp tục dùng tut 2 
 
 
 Thần chú自分のアカウントの審査リクエストを送信しましたが、Facebook からの返答がありません。ユーザーとして、私は常に Facebook が設定したすべてのルールに従います。私のアカウントがポリシーに違反しているという Facebook の誤解に非常に失望しています。さらに、苦情を提出したときの審査プロセスが非常に遅く、仕事に大きな影響を及ぼしました。これは、プラットフォーム上で非常に悪いユーザー エクスペリエンスをもたらします。 Facebook チームに対し、できるだけ早く私のアカウントを確認し、復元するよう再度要請します。自分のアカウントにアクセスして作業を続けられるようにしたいです。 
 感謝 
 
-Tut 2 
-time: 5p - 24h
+Tut 2
 
 IP US + NGÔN NGỮ US ( NGÂM TRÊN 10P )
 
@@ -32,12 +39,9 @@ https://m.facebook.com/help/contact/268228883256323 { 2 TAB }
 
 https://m.facebook.com/help/contact/507287962650443 ( 2 TAB )
 
-https://www.facebook.com/help/contact/288611514529252 (1 TAB )
+https://m.facebook.com/help/contact/288611514529252 ( 1 TAB )
 
-https://www.facebook.com/help/contact/1417759018475333 ( 2 TAB )
-
-Lưu ý: Những link như 323,443 cần f12 chuyển sang thiết bị Iphone 14 Pmx,Nếu có cccd mới đi link 333 nếu không thì không đi
-Tóm tát cách dùng:Mở đủ tất cả các tab yêu cầu kể cả tab 282 sau đó mới ngâm ip, trong quá trình làm không được tắt ip
+Tóm tát cách dùng: F12 chuyển sang thiết bị iphone 14 prm hoặc 12 pro > mở tất cả tab theo yêu cầu kể cả tab 282 > ngâm ip > sau đó đi link > sau khi đi link xong thì tắt trình duyệt > đợi từ 30p - 7 day acc sẽ đáp
 
 Tiêu đề: Request for Review of 180-Day Suspension for Alleged Sexual Content Violation
 
