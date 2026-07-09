@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MRZ ANALYZER TERMINAL</title>
+    <title>MRZ ANALYZER TERMINAL v2</title>
     <style>
         :root {
             --matrix-green: #0f0;
@@ -81,24 +81,42 @@
             flex-direction: column;
         }
 
-        /* Header / Glitch */
         header {
             font-size: 2rem;
             font-weight: bold;
             text-align: center;
-            margin-bottom: 5px;
+            margin-bottom: 20px;
             text-transform: uppercase;
             text-shadow: var(--glow);
-            position: relative;
             animation: text-glitch 3s infinite;
         }
-        
-        .mode-label {
-            text-align: center;
-            font-size: 1rem;
-            margin-bottom: 30px;
+
+        /* Mode Switcher */
+        .mode-switcher {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
             border-bottom: 1px dashed var(--matrix-green);
-            padding-bottom: 10px;
+            padding-bottom: 15px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 10px;
+            font-size: 1rem;
+            border: 1px solid var(--matrix-green);
+            background: transparent;
+            color: var(--matrix-green);
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .mode-btn.active {
+            background: var(--matrix-green);
+            color: var(--bg-color);
+            box-shadow: var(--glow);
+            font-weight: bold;
         }
 
         /* Form Layout */
@@ -122,7 +140,7 @@
             margin-bottom: 5px;
         }
 
-        input, select, button {
+        input, select, textarea, button {
             background: transparent;
             border: 1px solid var(--matrix-green);
             color: var(--matrix-green);
@@ -133,13 +151,18 @@
             transition: all 0.3s;
         }
 
-        /* Styling native Date picker icon for webkit */
+        textarea {
+            resize: vertical;
+            line-height: 1.5;
+            letter-spacing: 1px;
+        }
+
         ::-webkit-calendar-picker-indicator {
             filter: invert(1) sepia(100%) saturate(10000%) hue-rotate(80deg);
             cursor: pointer;
         }
 
-        input:focus, select:focus {
+        input:focus, select:focus, textarea:focus {
             box-shadow: inset 0 0 5px var(--matrix-green), 0 0 5px var(--matrix-green);
             background: rgba(0, 255, 0, 0.05);
         }
@@ -150,21 +173,25 @@
             font-weight: bold;
         }
 
-        button:hover {
-            background: var(--matrix-green);
-            color: var(--bg-color);
-            box-shadow: var(--glow);
+        button:hover:not(.active) {
+            background: rgba(0, 255, 0, 0.2);
+            box-shadow: 0 0 5px var(--matrix-green);
         }
 
         button:active {
             transform: scale(0.98);
         }
 
-        .btn-generate {
+        .btn-action {
             grid-column: 1 / -1;
             padding: 15px;
             font-size: 1.2rem;
             margin-top: 10px;
+            background: rgba(0, 255, 0, 0.1);
+        }
+        .btn-action:hover {
+            background: var(--matrix-green);
+            color: var(--bg-color);
         }
 
         /* Output Area */
@@ -178,18 +205,18 @@
             overflow-y: auto;
         }
 
-        .terminal-log {
-            line-height: 1.5;
-            margin-bottom: 15px;
-        }
-
-        .mrz-block {
+        .mrz-block, .info-block {
             margin-top: 20px;
             border: 1px dashed var(--matrix-green);
             padding: 15px;
             background: rgba(0, 255, 0, 0.03);
             text-shadow: 0 0 2px var(--matrix-green);
             word-break: break-all;
+        }
+
+        .info-block div {
+            margin-bottom: 8px;
+            font-size: 1.1rem;
         }
 
         .mrz-line {
@@ -215,21 +242,9 @@
         .blink { animation: blinker 1s linear infinite; }
 
         /* Animations */
-        @keyframes blinker {
-            50% { opacity: 0; }
-        }
-
-        @keyframes scan {
-            0% { top: -100px; }
-            100% { top: 100vh; }
-        }
-
-        @keyframes flicker {
-            0% { opacity: 0.02; }
-            50% { opacity: 0.05; }
-            100% { opacity: 0.02; }
-        }
-
+        @keyframes blinker { 50% { opacity: 0; } }
+        @keyframes scan { 0% { top: -100px; } 100% { top: 100vh; } }
+        @keyframes flicker { 0% { opacity: 0.02; } 50% { opacity: 0.05; } 100% { opacity: 0.02; } }
         @keyframes text-glitch {
             0% { text-shadow: var(--glow); }
             20% { text-shadow: 2px 0 0 red, -2px 0 0 blue; }
@@ -240,17 +255,12 @@
             100% { text-shadow: var(--glow); }
         }
 
-        /* Responsive */
         @media (max-width: 600px) {
-            .form-grid {
-                grid-template-columns: 1fr;
-                gap: 15px;
-            }
-            .action-buttons {
-                flex-direction: column;
-            }
+            .form-grid { grid-template-columns: 1fr; gap: 15px; }
+            .action-buttons { flex-direction: column; }
             header { font-size: 1.5rem; }
             .mrz-line { font-size: 1rem; letter-spacing: 1px; }
+            .mode-switcher { flex-direction: column; }
         }
     </style>
 </head>
@@ -259,67 +269,158 @@
     
     <div class="terminal-container">
         <header>MRZ ANALYZER TERMINAL</header>
-        <div class="mode-label">>> MODE 1: INFO → MRZ GENERATOR (DEMO) <<</div>
 
-        <div class="form-grid">
-            <div class="input-group full-width">
-                <label>> SỐ CCCD [12 DIGITS]</label>
-                <input type="text" id="cccd" maxlength="12" placeholder="Nhập 12 số CCCD" autocomplete="off">
-            </div>
-
-            <div class="input-group full-width">
-                <label>> HỌ VÀ TÊN ĐẦY ĐỦ</label>
-                <input type="text" id="fullname" placeholder="VD: NGUYỄN VĂN BÌNH" autocomplete="off">
-            </div>
-
-            <div class="input-group">
-                <label>> NGÀY SINH [DOB]</label>
-                <input type="date" id="dob">
-            </div>
-
-            <div class="input-group">
-                <label>> GIỚI TÍNH [GENDER]</label>
-                <select id="gender">
-                    <option value="M">NAM (M)</option>
-                    <option value="F">NỮ (F)</option>
-                </select>
-            </div>
-
-            <div class="input-group full-width">
-                <label>> NGÀY HẾT HẠN [EXPIRY]</label>
-                <input type="date" id="expiry">
-            </div>
-
-            <button class="btn-generate" onclick="startGeneration()">
-                > GENERATE_MRZ <span class="blink">_</span>
-            </button>
+        <!-- Mode Switcher -->
+        <div class="mode-switcher">
+            <button class="mode-btn active" id="btn-mode1" onclick="switchMode(1)">[ MODE 1: INFO -> MRZ ]</button>
+            <button class="mode-btn" id="btn-mode2" onclick="switchMode(2)">[ MODE 2: MRZ -> INFO ]</button>
         </div>
 
+        <!-- ================= MODE 1: GENERATE ================= -->
+        <div id="section-mode1">
+            <div class="form-grid">
+                <div class="input-group full-width">
+                    <label>> SỐ CCCD [12 DIGITS]</label>
+                    <input type="text" id="cccd" maxlength="12" placeholder="Nhập 12 số CCCD" autocomplete="off">
+                </div>
+
+                <div class="input-group full-width">
+                    <label>> HỌ VÀ TÊN ĐẦY ĐỦ</label>
+                    <input type="text" id="fullname" placeholder="VD: NGUYỄN VĂN BÌNH" autocomplete="off">
+                </div>
+
+                <div class="input-group">
+                    <label>> NGÀY SINH [DOB]</label>
+                    <input type="date" id="dob">
+                </div>
+
+                <div class="input-group">
+                    <label>> GIỚI TÍNH [GENDER]</label>
+                    <select id="gender">
+                        <option value="M">NAM (M)</option>
+                        <option value="F">NỮ (F)</option>
+                    </select>
+                </div>
+
+                <div class="input-group full-width">
+                    <label>> NGÀY HẾT HẠN [EXPIRY] (Tự động +25 năm)</label>
+                    <input type="date" id="expiry">
+                </div>
+
+                <button class="btn-action" onclick="startGeneration()">
+                    > GENERATE_MRZ <span class="blink">_</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- ================= MODE 2: DECODE ================= -->
+        <div id="section-mode2" class="hidden">
+            <div class="form-grid">
+                <div class="input-group full-width">
+                    <label>> INPUT MRZ DATA [DÁN 3 DÒNG MRZ VÀO ĐÂY]</label>
+                    <textarea id="mrz-input" rows="4" placeholder="IDVNMxxxxxxxxxxxxxxxxxxxxx<<9&#10;xxxxxxFxxxxxxVNM<<<<<<<<<<8&#10;NGUYEN<<VAN<BINH<<<<<<<<<<<<"></textarea>
+                </div>
+
+                <button class="btn-action" onclick="startDecoding()">
+                    > DECODE_DATA <span class="blink">_</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- ================= TERMINAL OUTPUT ================= -->
         <div class="output-area" id="terminal-screen">
             <div id="terminal-logs">
                 <div>> SYSTEM READY. WAITING FOR INPUT...</div>
             </div>
             
+            <!-- Output Container for Mode 1 -->
             <div id="mrz-output" class="hidden">
                 <div class="mrz-block">
-                    <div>========== GENERATED MRZ ==========</div><br>
+                    <div style="color: #fff;">========== GENERATED MRZ ==========</div><br>
                     <div id="mrz-l1" class="mrz-line"></div>
                     <div id="mrz-l2" class="mrz-line"></div>
                     <div id="mrz-l3" class="mrz-line"></div><br>
-                    <div>===================================</div>
+                    <div style="color: #fff;">===================================</div>
                 </div>
 
                 <div class="action-buttons">
-                    <button onclick="copyMRZ()">[ COPY MRZ ]</button>
-                    <button onclick="clearData()">[ CLEAR DATA ]</button>
-                    <button onclick="exportTXT()">[ EXPORT TXT ]</button>
+                    <button onclick="copyData('mrz')">[ COPY MRZ ]</button>
+                    <button onclick="clearTerminal()">[ CLEAR DATA ]</button>
+                    <button onclick="exportTXT('mrz')">[ EXPORT TXT ]</button>
+                </div>
+            </div>
+
+            <!-- Output Container for Mode 2 -->
+            <div id="info-output" class="hidden">
+                <div class="info-block">
+                    <div style="color: #fff;">========== DECODED INFO ==========</div><br>
+                    <div id="dec-cccd">> SỐ CCCD : </div>
+                    <div id="dec-name">> HỌ TÊN  : </div>
+                    <div id="dec-dob">> NGÀY SINH: </div>
+                    <div id="dec-gender">> GIỚI TÍNH: </div>
+                    <div id="dec-exp">> HẾT HẠN  : </div><br>
+                    <div style="color: #fff;">==================================</div>
+                </div>
+
+                <div class="action-buttons">
+                    <button onclick="copyData('info')">[ COPY INFO ]</button>
+                    <button onclick="clearTerminal()">[ CLEAR DATA ]</button>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Utilities to process strings & dates
+        // ================= UI CONTROL & UTILS =================
+
+        let currentMode = 1;
+
+        function switchMode(mode) {
+            currentMode = mode;
+            document.getElementById('btn-mode1').classList.toggle('active', mode === 1);
+            document.getElementById('btn-mode2').classList.toggle('active', mode === 2);
+            
+            document.getElementById('section-mode1').classList.toggle('hidden', mode !== 1);
+            document.getElementById('section-mode2').classList.toggle('hidden', mode !== 2);
+
+            clearTerminal();
+        }
+
+        function scrollToBottom() {
+            const screen = document.getElementById('terminal-screen');
+            screen.scrollTop = screen.scrollHeight;
+        }
+
+        function clearTerminal() {
+            document.getElementById('mrz-output').classList.add('hidden');
+            document.getElementById('info-output').classList.add('hidden');
+            document.getElementById('terminal-logs').innerHTML = `<div>> SYSTEM READY [MODE ${currentMode}]. WAITING FOR INPUT...</div>`;
+            
+            if (currentMode === 1) {
+                document.getElementById('cccd').value = '';
+                document.getElementById('fullname').value = '';
+                document.getElementById('dob').value = '';
+                document.getElementById('expiry').value = '';
+                document.getElementById('gender').value = 'M';
+            } else {
+                document.getElementById('mrz-input').value = '';
+            }
+        }
+
+        // Tự động tính ngày hết hạn (DOB + 25 năm)
+        document.getElementById('dob').addEventListener('change', function() {
+            const dobVal = this.value;
+            if (dobVal) {
+                const parts = dobVal.split('-'); // YYYY-MM-DD
+                if (parts.length === 3) {
+                    const year = parseInt(parts[0], 10);
+                    const expiryYear = year + 25;
+                    const expiryDate = `${expiryYear}-${parts[1]}-${parts[2]}`;
+                    document.getElementById('expiry').value = expiryDate;
+                }
+            }
+        });
+
         function removeVietnameseTones(str) {
             str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a");
             str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e");
@@ -338,79 +439,54 @@
             return str;
         }
 
-        // Format Date to YYMMDD
-        function formatDateToYYMMDD(dateString) {
-            if (!dateString) return "XXXXXX";
-            // dateString from <input type="date"> is YYYY-MM-DD
-            const parts = dateString.split('-');
-            if (parts.length === 3) {
-                const yy = parts[0].substring(2);
-                const mm = parts[1];
-                const dd = parts[2];
-                return yy + mm + dd;
+        // YYMMDD to YYYY-MM-DD
+        function parseYYMMDD(yymmdd, isDOB) {
+            const yy = parseInt(yymmdd.substring(0, 2), 10);
+            const mm = yymmdd.substring(2, 4);
+            const dd = yymmdd.substring(4, 6);
+            
+            const currentYear = new Date().getFullYear();
+            const currentYY = currentYear % 100;
+            
+            let year = 2000 + yy;
+            
+            // Logic thế kỷ:
+            // Nếu là ngày sinh và (2000 + yy) > năm hiện tại -> chắc chắn sinh năm 19xx
+            if (isDOB && year > currentYear) {
+                year = 1900 + yy;
             }
-            return "XXXXXX";
+
+            return `${year}-${mm}-${dd}`;
         }
 
-        // Process Name for Line 3
-        function processFullName(name) {
-            let cleanName = removeVietnameseTones(name).toUpperCase().trim();
-            // Replace multiple spaces with a single space
-            cleanName = cleanName.replace(/\s+/g, ' '); 
-            
-            if (!cleanName) return "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"; // 30 chars fallback
-            
-            let parts = cleanName.split(' ');
-            let mrzName = "";
-            
-            if (parts.length >= 2) {
-                let ho = parts[0];
-                let rest = parts.slice(1).join('<');
-                mrzName = ho + "<<" + rest;
-            } else {
-                mrzName = parts[0] || "";
-            }
-            
-            // Standard MRZ pad Line 3 up to 30 characters
-            while (mrzName.length < 30) {
-                mrzName += "<";
-            }
-            
-            // If the name is exceedingly long, trim to 30 to respect TD1 MRZ format bounds
-            return mrzName.substring(0, 30);
+        function formatDisplayDate(yyyy_mm_dd) {
+            const p = yyyy_mm_dd.split('-');
+            return `${p[2]}/${p[1]}/${p[0]}`;
         }
 
-        // Validate Input
-        function validate() {
+
+        // ================= MODE 1: ENCODE LOGIC =================
+        function startGeneration() {
             const cccd = document.getElementById('cccd').value.trim();
             const fullname = document.getElementById('fullname').value.trim();
             const dob = document.getElementById('dob').value;
             const expiry = document.getElementById('expiry').value;
 
-            if(!cccd || !fullname || !dob || !expiry) {
-                return false;
-            }
-            return true;
-        }
-
-        // Main Generation Logic
-        function startGeneration() {
             const logs = document.getElementById('terminal-logs');
             const output = document.getElementById('mrz-output');
             
-            if (!validate()) {
+            if(!cccd || !fullname || !dob || !expiry) {
                 logs.innerHTML += `<div style="color: red">> [ERROR] MISSING INPUT DATA. ABORTING...</div>`;
                 scrollToBottom();
                 return;
             }
 
-            // Hide output and clear logs for new generation
             output.classList.add('hidden');
-            logs.innerHTML = `<div>> INITIALIZING MRZ PROTOCOL...</div>`;
+            document.getElementById('info-output').classList.add('hidden');
+            logs.innerHTML = `<div>> INITIALIZING MRZ ENCODER...</div>`;
             
             const sequence = [
                 "> PARSING BIOMETRIC DATA...",
-                "> EXTRACTING IDENTITY VECTOR...",
                 "> ENCODING LINE 1...",
                 "> ENCODING LINE 2...",
                 "> ENCODING LINE 3...",
@@ -422,12 +498,9 @@
                 setTimeout(() => {
                     logs.innerHTML += `<div>${text}</div>`;
                     scrollToBottom();
-                    
-                    if (index === sequence.length - 1) {
-                        setTimeout(() => buildMRZ(), 500);
-                    }
+                    if (index === sequence.length - 1) setTimeout(() => buildMRZ(), 400);
                 }, delay);
-                delay += 300; // 300ms per line animation
+                delay += 300;
             });
         }
 
@@ -438,22 +511,30 @@
             const gender = document.getElementById('gender').value;
             const expiry = document.getElementById('expiry').value;
 
-            // --- BUILD LINE 1 ---
-            // Cấu trúc: IDVNM + [SỐ CCCD] + [8 ký tự đầu của số CCCD] + <<9
+            // Line 1: IDVNM + [CCCD] + [8 chars CCCD] + <<9
             const cccdFirst8 = cccd.substring(0, 8).padEnd(8, '<');
             const line1 = `IDVNM${cccd}${cccdFirst8}<<9`;
 
-            // --- BUILD LINE 2 ---
-            // Cấu trúc: [YYMMDD DOB] + [F/M] + [YYMMDD Expiry] + VNM + <<<<<<<<<< + 8
-            const dobYYMMDD = formatDateToYYMMDD(dob);
-            const expYYMMDD = formatDateToYYMMDD(expiry);
+            // Line 2: YYMMDD + G + YYMMDD + VNM<<<<<<<<<<8
+            const dParts = dob.split('-');
+            const eParts = expiry.split('-');
+            const dobYYMMDD = dParts[0].substring(2) + dParts[1] + dParts[2];
+            const expYYMMDD = eParts[0].substring(2) + eParts[1] + eParts[2];
+            
             const line2 = `${dobYYMMDD}${gender}${expYYMMDD}VNM<<<<<<<<<<8`;
 
-            // --- BUILD LINE 3 ---
-            // Cấu trúc: HỌ<<TÊN_ĐỆM<TÊN<<<<<<<<<<<<
-            const line3 = processFullName(fullname);
+            // Line 3: HỌ<<TÊN_ĐỆM<TÊN
+            let cleanName = removeVietnameseTones(fullname).toUpperCase().trim().replace(/\s+/g, ' ');
+            let parts = cleanName.split(' ');
+            let line3 = "";
+            if (parts.length >= 2) {
+                line3 = parts[0] + "<<" + parts.slice(1).join('<');
+            } else {
+                line3 = parts[0] || "";
+            }
+            while (line3.length < 30) line3 += "<";
+            line3 = line3.substring(0, 30);
 
-            // Display
             document.getElementById('mrz-l1').innerText = line1;
             document.getElementById('mrz-l2').innerText = line2;
             document.getElementById('mrz-l3').innerText = line3;
@@ -462,46 +543,112 @@
             scrollToBottom();
         }
 
-        function scrollToBottom() {
-            const terminalScreen = document.getElementById('terminal-screen');
-            terminalScreen.scrollTop = terminalScreen.scrollHeight;
-        }
-
-        // Actions
-        function copyMRZ() {
-            const l1 = document.getElementById('mrz-l1').innerText;
-            const l2 = document.getElementById('mrz-l2').innerText;
-            const l3 = document.getElementById('mrz-l3').innerText;
-            const mrzText = `${l1}\n${l2}\n${l3}`;
-            
-            // Fallback for older browsers / iframe restrictions
-            const textArea = document.createElement("textarea");
-            textArea.value = mrzText;
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            
-            try {
-                document.execCommand('copy');
-                const logs = document.getElementById('terminal-logs');
-                logs.innerHTML += `<div>> [SYS] MRZ DATA COPIED TO CLIPBOARD.</div>`;
-                scrollToBottom();
-            } catch (err) {
-                alert("Cannot copy text.");
-            }
-            document.body.removeChild(textArea);
-        }
-
-        function clearData() {
-            document.getElementById('cccd').value = '';
-            document.getElementById('fullname').value = '';
-            document.getElementById('dob').value = '';
-            document.getElementById('expiry').value = '';
-            document.getElementById('gender').value = 'M';
-            
-            document.getElementById('mrz-output').classList.add('hidden');
+        // ================= MODE 2: DECODE LOGIC =================
+        function startDecoding() {
+            const rawInput = document.getElementById('mrz-input').value.trim();
             const logs = document.getElementById('terminal-logs');
-            logs.innerHTML = `<div>> SYSTEM CLEARED. WAITING FOR NEW INPUT...</div>`;
+            const output = document.getElementById('info-output');
+
+            const lines = rawInput.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+            if (lines.length !== 3) {
+                logs.innerHTML += `<div style="color: red">> [ERROR] INVALID MRZ FORMAT. EXPECTED 3 LINES, FOUND ${lines.length}.</div>`;
+                scrollToBottom();
+                return;
+            }
+
+            output.classList.add('hidden');
+            document.getElementById('mrz-output').classList.add('hidden');
+            logs.innerHTML = `<div>> INITIALIZING DECODER...</div>`;
+
+            const sequence = [
+                "> ANALYZING MRZ SIGNATURE...",
+                "> EXTRACTING ID VECTOR...",
+                "> DECODING DATES & GENDER...",
+                "> RECONSTRUCTING NAME...",
+                "> DECRYPTION SUCCESSFUL."
+            ];
+
+            let delay = 0;
+            sequence.forEach((text, index) => {
+                setTimeout(() => {
+                    logs.innerHTML += `<div>${text}</div>`;
+                    scrollToBottom();
+                    if (index === sequence.length - 1) setTimeout(() => processDecode(lines), 400);
+                }, delay);
+                delay += 300;
+            });
+        }
+
+        function processDecode(lines) {
+            const l1 = lines[0];
+            const l2 = lines[1];
+            const l3 = lines[2];
+
+            try {
+                // Line 1 Decode: IDVNMxxxxxxxxxxxx
+                const cccd = l1.substring(5, 17).replace(/</g, '');
+
+                // Line 2 Decode: YYMMDD(DOB) + G + YYMMDD(EXP)
+                const dobStr = parseYYMMDD(l2.substring(0, 6), true);
+                const genderChar = l2.substring(6, 7);
+                const gender = genderChar === 'F' ? 'NỮ' : (genderChar === 'M' ? 'NAM' : 'UNKNOWN');
+                const expStr = parseYYMMDD(l2.substring(7, 13), false);
+
+                // Line 3 Decode: HỌ<<TÊN_ĐỆM<TÊN
+                let rawName = l3.replace(/<+$/g, ''); // Xóa < ở cuối
+                let nameParts = rawName.split('<<');
+                let fullName = "";
+                
+                if (nameParts.length === 2) {
+                    let ho = nameParts[0];
+                    let ten = nameParts[1].replace(/</g, ' ');
+                    fullName = ho + ' ' + ten;
+                } else {
+                    fullName = rawName.replace(/</g, ' ');
+                }
+
+                // Render result
+                document.getElementById('dec-cccd').innerText = `> SỐ CCCD : ${cccd}`;
+                document.getElementById('dec-name').innerText = `> HỌ TÊN  : ${fullName}`;
+                document.getElementById('dec-dob').innerText =  `> NGÀY SINH: ${formatDisplayDate(dobStr)}`;
+                document.getElementById('dec-gender').innerText = `> GIỚI TÍNH: ${gender}`;
+                document.getElementById('dec-exp').innerText =  `> HẾT HẠN  : ${formatDisplayDate(expStr)}`;
+
+                document.getElementById('info-output').classList.remove('hidden');
+                scrollToBottom();
+
+            } catch (err) {
+                const logs = document.getElementById('terminal-logs');
+                logs.innerHTML += `<div style="color: red">> [FATAL ERROR] CORRUPTED MRZ DATA. CANNOT DECODE.</div>`;
+                scrollToBottom();
+            }
+        }
+
+        // ================= ACTIONS =================
+        function copyData(type) {
+            let text = "";
+            if (type === 'mrz') {
+                text = document.getElementById('mrz-l1').innerText + '\n' +
+                       document.getElementById('mrz-l2').innerText + '\n' +
+                       document.getElementById('mrz-l3').innerText;
+            } else {
+                text = document.getElementById('dec-cccd').innerText + '\n' +
+                       document.getElementById('dec-name').innerText + '\n' +
+                       document.getElementById('dec-dob').innerText + '\n' +
+                       document.getElementById('dec-gender').innerText + '\n' +
+                       document.getElementById('dec-exp').innerText;
+            }
+            
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+
+            const logs = document.getElementById('terminal-logs');
+            logs.innerHTML += `<div>> [SYS] DATA COPIED TO CLIPBOARD.</div>`;
             scrollToBottom();
         }
 
@@ -529,5 +676,3 @@
     </script>
 </body>
 </html>
-
-
