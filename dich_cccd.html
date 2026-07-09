@@ -1,0 +1,533 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MRZ ANALYZER TERMINAL</title>
+    <style>
+        :root {
+            --matrix-green: #0f0;
+            --dark-green: #003300;
+            --bg-color: #050505;
+            --glow: 0 0 10px #0f0, 0 0 20px #0f0;
+            --font-main: 'Consolas', 'Courier New', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body, html {
+            height: 100%;
+            background-color: var(--bg-color);
+            color: var(--matrix-green);
+            font-family: var(--font-main);
+            overflow-x: hidden;
+        }
+
+        /* CRT Effect & Scanlines */
+        .crt::before {
+            content: " ";
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        .crt::after {
+            content: " ";
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: rgba(0, 255, 0, 0.02);
+            opacity: 0;
+            z-index: 2;
+            pointer-events: none;
+            animation: flicker 0.15s infinite;
+        }
+
+        .scanline {
+            width: 100%;
+            height: 100px;
+            z-index: 1;
+            position: fixed;
+            pointer-events: none;
+            background: linear-gradient(0deg, rgba(0,0,0,0) 0%, rgba(0,255,0,0.1) 50%, rgba(0,0,0,0) 100%);
+            opacity: 0.1;
+            animation: scan 6s linear infinite;
+        }
+
+        /* Container & Layout */
+        .terminal-container {
+            position: relative;
+            z-index: 3;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header / Glitch */
+        header {
+            font-size: 2rem;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            text-shadow: var(--glow);
+            position: relative;
+            animation: text-glitch 3s infinite;
+        }
+        
+        .mode-label {
+            text-align: center;
+            font-size: 1rem;
+            margin-bottom: 30px;
+            border-bottom: 1px dashed var(--matrix-green);
+            padding-bottom: 10px;
+        }
+
+        /* Form Layout */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .input-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+
+        input, select, button {
+            background: transparent;
+            border: 1px solid var(--matrix-green);
+            color: var(--matrix-green);
+            font-family: var(--font-main);
+            padding: 10px;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        /* Styling native Date picker icon for webkit */
+        ::-webkit-calendar-picker-indicator {
+            filter: invert(1) sepia(100%) saturate(10000%) hue-rotate(80deg);
+            cursor: pointer;
+        }
+
+        input:focus, select:focus {
+            box-shadow: inset 0 0 5px var(--matrix-green), 0 0 5px var(--matrix-green);
+            background: rgba(0, 255, 0, 0.05);
+        }
+
+        button {
+            cursor: pointer;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: var(--matrix-green);
+            color: var(--bg-color);
+            box-shadow: var(--glow);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .btn-generate {
+            grid-column: 1 / -1;
+            padding: 15px;
+            font-size: 1.2rem;
+            margin-top: 10px;
+        }
+
+        /* Output Area */
+        .output-area {
+            flex-grow: 1;
+            border: 1px solid var(--dark-green);
+            background: #020a02;
+            padding: 20px;
+            min-height: 250px;
+            position: relative;
+            overflow-y: auto;
+        }
+
+        .terminal-log {
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+
+        .mrz-block {
+            margin-top: 20px;
+            border: 1px dashed var(--matrix-green);
+            padding: 15px;
+            background: rgba(0, 255, 0, 0.03);
+            text-shadow: 0 0 2px var(--matrix-green);
+            word-break: break-all;
+        }
+
+        .mrz-line {
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            margin: 5px 0;
+            white-space: pre-wrap;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .action-buttons button {
+            flex: 1;
+            font-size: 0.9rem;
+            padding: 10px;
+        }
+
+        .hidden { display: none !important; }
+        .blink { animation: blinker 1s linear infinite; }
+
+        /* Animations */
+        @keyframes blinker {
+            50% { opacity: 0; }
+        }
+
+        @keyframes scan {
+            0% { top: -100px; }
+            100% { top: 100vh; }
+        }
+
+        @keyframes flicker {
+            0% { opacity: 0.02; }
+            50% { opacity: 0.05; }
+            100% { opacity: 0.02; }
+        }
+
+        @keyframes text-glitch {
+            0% { text-shadow: var(--glow); }
+            20% { text-shadow: 2px 0 0 red, -2px 0 0 blue; }
+            21% { text-shadow: var(--glow); }
+            60% { text-shadow: var(--glow); }
+            61% { text-shadow: -2px 0 0 red, 2px 0 0 blue; }
+            62% { text-shadow: var(--glow); }
+            100% { text-shadow: var(--glow); }
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            .action-buttons {
+                flex-direction: column;
+            }
+            header { font-size: 1.5rem; }
+            .mrz-line { font-size: 1rem; letter-spacing: 1px; }
+        }
+    </style>
+</head>
+<body class="crt">
+    <div class="scanline"></div>
+    
+    <div class="terminal-container">
+        <header>MRZ ANALYZER TERMINAL</header>
+        <div class="mode-label">>> MODE 1: INFO → MRZ GENERATOR (DEMO) <<</div>
+
+        <div class="form-grid">
+            <div class="input-group full-width">
+                <label>> SỐ CCCD [12 DIGITS]</label>
+                <input type="text" id="cccd" maxlength="12" placeholder="Nhập 12 số CCCD" autocomplete="off">
+            </div>
+
+            <div class="input-group full-width">
+                <label>> HỌ VÀ TÊN ĐẦY ĐỦ</label>
+                <input type="text" id="fullname" placeholder="VD: NGUYỄN VĂN BÌNH" autocomplete="off">
+            </div>
+
+            <div class="input-group">
+                <label>> NGÀY SINH [DOB]</label>
+                <input type="date" id="dob">
+            </div>
+
+            <div class="input-group">
+                <label>> GIỚI TÍNH [GENDER]</label>
+                <select id="gender">
+                    <option value="M">NAM (M)</option>
+                    <option value="F">NỮ (F)</option>
+                </select>
+            </div>
+
+            <div class="input-group full-width">
+                <label>> NGÀY HẾT HẠN [EXPIRY]</label>
+                <input type="date" id="expiry">
+            </div>
+
+            <button class="btn-generate" onclick="startGeneration()">
+                > GENERATE_MRZ <span class="blink">_</span>
+            </button>
+        </div>
+
+        <div class="output-area" id="terminal-screen">
+            <div id="terminal-logs">
+                <div>> SYSTEM READY. WAITING FOR INPUT...</div>
+            </div>
+            
+            <div id="mrz-output" class="hidden">
+                <div class="mrz-block">
+                    <div>========== GENERATED MRZ ==========</div><br>
+                    <div id="mrz-l1" class="mrz-line"></div>
+                    <div id="mrz-l2" class="mrz-line"></div>
+                    <div id="mrz-l3" class="mrz-line"></div><br>
+                    <div>===================================</div>
+                </div>
+
+                <div class="action-buttons">
+                    <button onclick="copyMRZ()">[ COPY MRZ ]</button>
+                    <button onclick="clearData()">[ CLEAR DATA ]</button>
+                    <button onclick="exportTXT()">[ EXPORT TXT ]</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Utilities to process strings & dates
+        function removeVietnameseTones(str) {
+            str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a");
+            str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e");
+            str = str.replace(/ì|í|ị|ỉ|ĩ/g, "i");
+            str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o");
+            str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u");
+            str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y");
+            str = str.replace(/đ/g, "d");
+            str = str.replace(/À|Á|Ạ|Ả|Ã|Â|Ầ|Ấ|Ậ|Ẩ|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ/g, "A");
+            str = str.replace(/È|É|Ẹ|Ẻ|Ẽ|Ê|Ề|Ế|Ệ|Ể|Ễ/g, "E");
+            str = str.replace(/Ì|Í|Ị|Ỉ|Ĩ/g, "I");
+            str = str.replace(/Ò|Ó|Ọ|Ỏ|Õ|Ô|Ồ|Ố|Ộ|Ổ|Ỗ|Ơ|Ờ|Ớ|Ợ|Ở|Ỡ/g, "O");
+            str = str.replace(/Ù|Ú|Ụ|Ủ|Ũ|Ư|Ừ|Ứ|Ự|Ử|Ữ/g, "U");
+            str = str.replace(/Ỳ|Ý|Ỵ|Ỷ|Ỹ/g, "Y");
+            str = str.replace(/Đ/g, "D");
+            return str;
+        }
+
+        // Format Date to YYMMDD
+        function formatDateToYYMMDD(dateString) {
+            if (!dateString) return "XXXXXX";
+            // dateString from <input type="date"> is YYYY-MM-DD
+            const parts = dateString.split('-');
+            if (parts.length === 3) {
+                const yy = parts[0].substring(2);
+                const mm = parts[1];
+                const dd = parts[2];
+                return yy + mm + dd;
+            }
+            return "XXXXXX";
+        }
+
+        // Process Name for Line 3
+        function processFullName(name) {
+            let cleanName = removeVietnameseTones(name).toUpperCase().trim();
+            // Replace multiple spaces with a single space
+            cleanName = cleanName.replace(/\s+/g, ' '); 
+            
+            if (!cleanName) return "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"; // 30 chars fallback
+            
+            let parts = cleanName.split(' ');
+            let mrzName = "";
+            
+            if (parts.length >= 2) {
+                let ho = parts[0];
+                let rest = parts.slice(1).join('<');
+                mrzName = ho + "<<" + rest;
+            } else {
+                mrzName = parts[0] || "";
+            }
+            
+            // Standard MRZ pad Line 3 up to 30 characters
+            while (mrzName.length < 30) {
+                mrzName += "<";
+            }
+            
+            // If the name is exceedingly long, trim to 30 to respect TD1 MRZ format bounds
+            return mrzName.substring(0, 30);
+        }
+
+        // Validate Input
+        function validate() {
+            const cccd = document.getElementById('cccd').value.trim();
+            const fullname = document.getElementById('fullname').value.trim();
+            const dob = document.getElementById('dob').value;
+            const expiry = document.getElementById('expiry').value;
+
+            if(!cccd || !fullname || !dob || !expiry) {
+                return false;
+            }
+            return true;
+        }
+
+        // Main Generation Logic
+        function startGeneration() {
+            const logs = document.getElementById('terminal-logs');
+            const output = document.getElementById('mrz-output');
+            
+            if (!validate()) {
+                logs.innerHTML += `<div style="color: red">> [ERROR] MISSING INPUT DATA. ABORTING...</div>`;
+                scrollToBottom();
+                return;
+            }
+
+            // Hide output and clear logs for new generation
+            output.classList.add('hidden');
+            logs.innerHTML = `<div>> INITIALIZING MRZ PROTOCOL...</div>`;
+            
+            const sequence = [
+                "> PARSING BIOMETRIC DATA...",
+                "> EXTRACTING IDENTITY VECTOR...",
+                "> ENCODING LINE 1...",
+                "> ENCODING LINE 2...",
+                "> ENCODING LINE 3...",
+                "> ENCRYPTION COMPLETE. RENDERING..."
+            ];
+
+            let delay = 0;
+            sequence.forEach((text, index) => {
+                setTimeout(() => {
+                    logs.innerHTML += `<div>${text}</div>`;
+                    scrollToBottom();
+                    
+                    if (index === sequence.length - 1) {
+                        setTimeout(() => buildMRZ(), 500);
+                    }
+                }, delay);
+                delay += 300; // 300ms per line animation
+            });
+        }
+
+        function buildMRZ() {
+            const cccd = document.getElementById('cccd').value.trim();
+            const fullname = document.getElementById('fullname').value.trim();
+            const dob = document.getElementById('dob').value;
+            const gender = document.getElementById('gender').value;
+            const expiry = document.getElementById('expiry').value;
+
+            // --- BUILD LINE 1 ---
+            // Cấu trúc: IDVNM + [SỐ CCCD] + [8 ký tự đầu của số CCCD] + <<9
+            const cccdFirst8 = cccd.substring(0, 8).padEnd(8, '<');
+            const line1 = `IDVNM${cccd}${cccdFirst8}<<9`;
+
+            // --- BUILD LINE 2 ---
+            // Cấu trúc: [YYMMDD DOB] + [F/M] + [YYMMDD Expiry] + VNM + <<<<<<<<<< + 8
+            const dobYYMMDD = formatDateToYYMMDD(dob);
+            const expYYMMDD = formatDateToYYMMDD(expiry);
+            const line2 = `${dobYYMMDD}${gender}${expYYMMDD}VNM<<<<<<<<<<8`;
+
+            // --- BUILD LINE 3 ---
+            // Cấu trúc: HỌ<<TÊN_ĐỆM<TÊN<<<<<<<<<<<<
+            const line3 = processFullName(fullname);
+
+            // Display
+            document.getElementById('mrz-l1').innerText = line1;
+            document.getElementById('mrz-l2').innerText = line2;
+            document.getElementById('mrz-l3').innerText = line3;
+            
+            document.getElementById('mrz-output').classList.remove('hidden');
+            scrollToBottom();
+        }
+
+        function scrollToBottom() {
+            const terminalScreen = document.getElementById('terminal-screen');
+            terminalScreen.scrollTop = terminalScreen.scrollHeight;
+        }
+
+        // Actions
+        function copyMRZ() {
+            const l1 = document.getElementById('mrz-l1').innerText;
+            const l2 = document.getElementById('mrz-l2').innerText;
+            const l3 = document.getElementById('mrz-l3').innerText;
+            const mrzText = `${l1}\n${l2}\n${l3}`;
+            
+            // Fallback for older browsers / iframe restrictions
+            const textArea = document.createElement("textarea");
+            textArea.value = mrzText;
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                document.execCommand('copy');
+                const logs = document.getElementById('terminal-logs');
+                logs.innerHTML += `<div>> [SYS] MRZ DATA COPIED TO CLIPBOARD.</div>`;
+                scrollToBottom();
+            } catch (err) {
+                alert("Cannot copy text.");
+            }
+            document.body.removeChild(textArea);
+        }
+
+        function clearData() {
+            document.getElementById('cccd').value = '';
+            document.getElementById('fullname').value = '';
+            document.getElementById('dob').value = '';
+            document.getElementById('expiry').value = '';
+            document.getElementById('gender').value = 'M';
+            
+            document.getElementById('mrz-output').classList.add('hidden');
+            const logs = document.getElementById('terminal-logs');
+            logs.innerHTML = `<div>> SYSTEM CLEARED. WAITING FOR NEW INPUT...</div>`;
+            scrollToBottom();
+        }
+
+        function exportTXT() {
+            const l1 = document.getElementById('mrz-l1').innerText;
+            const l2 = document.getElementById('mrz-l2').innerText;
+            const l3 = document.getElementById('mrz-l3').innerText;
+            const mrzText = `========== GENERATED MRZ ==========\r\n${l1}\r\n${l2}\r\n${l3}\r\n===================================`;
+            
+            const blob = new Blob([mrzText], { type: "text/plain" });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `MRZ_EXPORT_${new Date().getTime()}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            const logs = document.getElementById('terminal-logs');
+            logs.innerHTML += `<div>> [SYS] MRZ DATA EXPORTED SUCCESSFULLY.</div>`;
+            scrollToBottom();
+        }
+    </script>
+</body>
+</html>
+
+
