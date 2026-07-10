@@ -4,11 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Quay Số May Mắn - 6 Chữ Số</title>
+    <title>Hệ Thống Quay Số May Mắn - Khóa Theo Ngày</title>
     <!-- Sử dụng Tailwind CSS cho giao diện -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Thêm hiệu ứng lấp lánh cho giải đặc biệt */
+        /* Hiệu ứng lấp lánh cho giải đặc biệt */
         @keyframes shine {
             0% { background-position: -200% center; }
             100% { background-position: 200% center; }
@@ -41,13 +41,29 @@
 </head>
 <body class="bg-gray-50 min-h-screen font-sans text-gray-800">
 
+    <!-- Loading Screen lúc khởi tạo Firebase -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center transition-opacity duration-300">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-red-600 mb-4"></div>
+        <p id="loadingText" class="text-gray-600 font-semibold text-lg">Đang kết nối hệ thống bảo mật...</p>
+    </div>
+
     <div class="container mx-auto px-4 py-8 max-w-5xl">
+        <!-- Banner cảnh báo khóa -->
+        <div id="lockBanner" class="hidden mb-6 p-4 bg-amber-50 border border-amber-300 rounded-xl flex items-center gap-3 text-amber-800 shadow-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <div>
+                <span class="font-bold">Hệ thống đang khóa:</span> Bạn đã thực hiện quay số ngày hôm nay. Tính năng tạo mã và quay số mới đã bị vô hiệu hóa. Hệ thống sẽ mở khóa tự động vào ngày mai (<span id="unlockDateText" class="font-bold">--/--/----</span>). Hiện tại bạn chỉ có thể xuất dữ liệu đã quay.
+            </div>
+        </div>
+
         <!-- Header -->
         <div class="text-center mb-10">
             <h1 class="text-4xl md:text-5xl font-extrabold text-red-600 tracking-tight uppercase shadow-sm">
                 🎉 Vòng Quay May Mắn 🎉
             </h1>
-            <p class="text-gray-600 mt-3 text-lg">Hệ thống tạo mã ngẫu nhiên 6 số và quay số trúng thưởng</p>
+            <p class="text-gray-600 mt-3 text-lg">Hệ thống tạo mã ngẫu nhiên 6 số & Khóa bảo mật theo ngày</p>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -58,11 +74,11 @@
                 <div class="mb-5">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Số lượng mã cần tạo (Tối đa 1.000.000)</label>
                     <input type="number" id="inputAmount" value="10000" min="1" max="1000000" 
-                        class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all">
+                        class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all disabled:bg-gray-100 disabled:cursor-not-allowed">
                 </div>
 
                 <button id="btnGenerate" onclick="generateCodes()" 
-                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-all flex justify-center items-center gap-2 mb-4">
+                    class="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg shadow-md transition-all flex justify-center items-center gap-2 mb-4">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
                     </svg>
@@ -158,21 +174,365 @@
         </div>
     </div>
 
-    <script>
+    <!-- Tích hợp Firebase và các hàm xử lý logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Cấu hình Firebase được cung cấp tự động bởi môi trường chạy
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'lucky-draw-6-digit-v2';
+
         // Trạng thái ứng dụng
         let generatedCodes = [];
         let isDrawing = false;
+        let isLockedToday = false;
+        let currentUser = null;
 
-        // Các thành phần UI
+        // Các phần tử giao diện
         const btnGenerate = document.getElementById('btnGenerate');
         const btnExport = document.getElementById('btnExport');
         const btnDraw = document.getElementById('btnDraw');
+        const inputAmount = document.getElementById('inputAmount');
         const statusBox = document.getElementById('statusBox');
         const resultsContainer = document.getElementById('resultsContainer');
         const emptyState = document.getElementById('emptyState');
-        const inputAmount = document.getElementById('inputAmount');
+        const lockBanner = document.getElementById('lockBanner');
+        const unlockDateText = document.getElementById('unlockDateText');
+        const loadingOverlay = document.getElementById('loadingOverlay');
 
-        // Hàm hiển thị thông báo
+        // Hàm lấy chuỗi ngày hiện tại (YYYY-MM-DD) theo múi giờ địa phương
+        function getTodayDateString() {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        // Lấy ngày mai để hiển thị trên banner thông báo mở khóa
+        function getTomorrowDateString() {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const dd = String(tomorrow.getDate()).padStart(2, '0');
+            const mm = String(tomorrow.getMonth() + 1).padStart(2, '0');
+            const yyyy = tomorrow.getFullYear();
+            return `${dd}/${mm}/${yyyy}`;
+        }
+
+        // Khởi chạy hệ thống Auth & Kiểm tra trạng thái khóa đám mây
+        async function initApp() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (err) {
+                console.error("Lỗi xác thực hệ thống:", err);
+                showModal("Lỗi Hệ Thống", "Không thể thiết lập kết nối an toàn.", true);
+                showLoadingOverlay(false);
+            }
+        }
+
+        // Theo dõi trạng thái tài khoản
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                await checkLockStatus();
+            }
+        });
+
+        // Hàm kiểm tra trạng thái khóa từ Firestore (Áp dụng đúng Rule 1 và Rule 3)
+        async function checkLockStatus() {
+            if (!currentUser) return;
+            showLoadingOverlay(true, "Đang đồng bộ hóa trạng thái khóa...");
+
+            const todayStr = getTodayDateString();
+            const docPath = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'state', 'drawState');
+
+            try {
+                const docSnap = await getDoc(docPath);
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    
+                    // Nếu ngày đã khóa trùng khớp với ngày hôm nay
+                    if (data.lastDrawDate === todayStr && data.isLocked) {
+                        isLockedToday = true;
+                        generatedCodes = data.codes || [];
+                        
+                        // Áp dụng trạng thái khóa cho UI
+                        applyLockedUI(data.winners || []);
+                    } else {
+                        // Khác ngày hoặc chưa khóa -> Giải phóng trạng thái khóa
+                        isLockedToday = false;
+                        applyUnlockedUI();
+                    }
+                } else {
+                    isLockedToday = false;
+                    applyUnlockedUI();
+                }
+            } catch (error) {
+                console.error("Lỗi khi tải dữ liệu khóa:", error);
+            } finally {
+                showLoadingOverlay(false);
+            }
+        }
+
+        // Lưu trạng thái khóa vào Firestore
+        async function saveLockState(winnersList) {
+            if (!currentUser) return;
+
+            const todayStr = getTodayDateString();
+            const docPath = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'state', 'drawState');
+
+            // Chỉ lưu trữ mã lên đám mây nếu dung lượng nhỏ hơn 50.000 mã nhằm tránh quá giới hạn 1MB của tài liệu Firestore
+            let codesToPersist = [];
+            let isPersisted = false;
+            if (generatedCodes.length <= 50000) {
+                codesToPersist = generatedCodes;
+                isPersisted = true;
+            }
+
+            try {
+                await setDoc(docPath, {
+                    lastDrawDate: todayStr,
+                    isLocked: true,
+                    winners: winnersList,
+                    codes: codesToPersist,
+                    isCodesPersisted: isPersisted,
+                    timestamp: new Date().toISOString()
+                });
+                
+                isLockedToday = true;
+                applyLockedUI(winnersList);
+
+                if (!isPersisted) {
+                    showModal(
+                        "Lưu ý xuất file", 
+                        "Do danh sách mã lớn hơn 50.000 mã, chúng tôi chỉ khóa quyền quay số chứ không lưu trữ danh sách mã lên đám mây để tránh quá dung lượng. Vui lòng bấm 'Xuất file .txt' ngay bây giờ trước khi đóng trình duyệt!"
+                    );
+                }
+            } catch (error) {
+                console.error("Lỗi khi lưu trạng thái khóa:", error);
+                showModal("Lỗi Đám Mây", "Không thể đồng bộ trạng thái khóa. Bạn chỉ có thể tải file lúc này.", true);
+            }
+        }
+
+        // Áp dụng Giao diện khi bị KHÓA
+        function applyLockedUI(winners) {
+            // Hiển thị Banner cảnh báo khóa
+            lockBanner.classList.remove('hidden');
+            unlockDateText.innerText = getTomorrowDateString();
+
+            // Vô hiệu hóa nút Tạo mã và Quay số, cùng ô số lượng
+            btnGenerate.disabled = true;
+            btnDraw.disabled = true;
+            inputAmount.disabled = true;
+
+            // Đổi giao diện nút bấm sang màu xám vô hiệu hóa
+            btnGenerate.classList.replace('bg-blue-600', 'bg-gray-300');
+            btnGenerate.classList.replace('hover:bg-blue-700', 'hover:bg-gray-300');
+            btnDraw.classList.replace('bg-red-600', 'bg-gray-300');
+            btnDraw.classList.replace('hover:bg-red-700', 'hover:bg-gray-300');
+
+            // Kích hoạt nút xuất file nếu có danh sách mã đã khôi phục
+            if (generatedCodes.length > 0) {
+                btnExport.disabled = false;
+                statusBox.classList.remove('hidden');
+                statusBox.innerHTML = `
+                    <p class="font-bold mb-1 text-amber-700">🔒 Hệ thống đang khóa lượt của ngày hôm nay.</p>
+                    <p class="text-xs text-gray-500">Đã khôi phục ${generatedCodes.length.toLocaleString()} mã đã tạo để bạn xuất file.</p>
+                `;
+            } else {
+                btnExport.disabled = true;
+                statusBox.classList.remove('hidden');
+                statusBox.innerHTML = `
+                    <p class="font-bold mb-1 text-amber-700">🔒 Hệ thống đang khóa lượt của ngày hôm nay.</p>
+                    <p class="text-xs text-red-500">Danh sách mã hôm nay đã bị mất hoặc không được lưu trữ do dung lượng quá lớn.</p>
+                `;
+            }
+
+            // Hiển thị kết quả quay số đã khôi phục
+            if (winners && winners.length === 4) {
+                emptyState.classList.add('hidden');
+                resultsContainer.classList.remove('hidden');
+                document.getElementById('resSpecial').innerText = winners[0];
+                document.getElementById('res1st').innerText = winners[1];
+                document.getElementById('res2nd').innerText = winners[2];
+                document.getElementById('res3rd').innerText = winners[3];
+            }
+        }
+
+        // Khôi phục giao diện hoạt động bình thường (mở khóa)
+        function applyUnlockedUI() {
+            lockBanner.classList.add('hidden');
+            btnGenerate.disabled = false;
+            btnDraw.disabled = generatedCodes.length < 4; // Chỉ bật khi có mã
+            inputAmount.disabled = false;
+
+            // Trả lại màu cho nút bấm
+            btnGenerate.classList.replace('bg-gray-300', 'bg-blue-600');
+            btnGenerate.classList.replace('hover:bg-gray-300', 'hover:bg-blue-700');
+            
+            if (generatedCodes.length >= 4) {
+                btnDraw.classList.replace('bg-gray-300', 'bg-red-600');
+                btnDraw.classList.replace('hover:bg-gray-300', 'hover:bg-red-700');
+            }
+
+            if (generatedCodes.length > 0) {
+                btnExport.disabled = false;
+                statusBox.classList.remove('hidden');
+                statusBox.innerHTML = `
+                    <p class="font-bold mb-1">✅ Đã tạo thành công ${generatedCodes.length.toLocaleString()} mã.</p>
+                `;
+            } else {
+                btnExport.disabled = true;
+                statusBox.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                resultsContainer.classList.add('hidden');
+            }
+        }
+
+        // Hàm điều khiển màn hình Loading
+        function showLoadingOverlay(show, text = "") {
+            if (show) {
+                loadingOverlay.classList.remove('opacity-0', 'pointer-events-none');
+                if (text) document.getElementById('loadingText').innerText = text;
+            } else {
+                loadingOverlay.classList.add('opacity-0', 'pointer-events-none');
+            }
+        }
+
+        // --- CÁC HÀM XỬ LÝ SỰ KIỆN TRÊN TRANG (ĐƯỢC BIND VÀO WINDOW) ---
+
+        // 1. Tạo 6 chữ số ngẫu nhiên không trùng lặp
+        function generateCodes() {
+            if (isLockedToday) return;
+
+            let amount = parseInt(inputAmount.value);
+            
+            if (isNaN(amount) || amount <= 0) {
+                showModal("Lỗi Nhập Liệu", "Vui lòng nhập số lượng hợp lệ (lớn hơn 0).", true);
+                return;
+            }
+            if (amount > 1000000) {
+                amount = 1000000;
+                inputAmount.value = 1000000;
+                showModal("Giới hạn", "Vì định dạng 6 chữ số chỉ có tối đa 1.000.000 số khác nhau, hệ thống sẽ tự chỉnh thành 1.000.000 mã.");
+            }
+
+            btnGenerate.innerHTML = `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Đang tạo mã...`;
+            btnGenerate.disabled = true;
+
+            setTimeout(() => {
+                const codeSet = new Set();
+                
+                while (codeSet.size < amount) {
+                    const randomNum = Math.floor(Math.random() * 1000000);
+                    const formattedCode = randomNum.toString().padStart(6, '0');
+                    codeSet.add(formattedCode);
+                }
+
+                generatedCodes = Array.from(codeSet);
+
+                // Cập nhật trạng thái các nút
+                btnExport.disabled = false;
+                btnDraw.disabled = false;
+                btnDraw.classList.replace('bg-gray-300', 'bg-red-600');
+                btnDraw.classList.replace('hover:bg-gray-300', 'hover:bg-red-700');
+                
+                statusBox.classList.remove('hidden');
+                statusBox.innerHTML = `
+                    <p class="font-bold mb-1">✅ Đã tạo thành công ${generatedCodes.length.toLocaleString()} mã.</p>
+                    <p class="text-xs text-gray-500">Định dạng: xxxxxx (Ví dụ: ${generatedCodes[0]}, ${generatedCodes[1] || '000000'}, ...)</p>
+                `;
+
+                btnGenerate.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" /></svg> Tạo Lại Mã`;
+                btnGenerate.disabled = false;
+                
+                resultsContainer.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+            }, 100);
+        }
+
+        // 2. Xuất file mã ra .txt
+        function exportToTxt() {
+            if (generatedCodes.length === 0) return;
+
+            const content = generatedCodes.join('\n');
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `danh_sach_${generatedCodes.length}_ma_6_so.txt`;
+            document.body.appendChild(a);
+            a.click();
+            
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // 3. Quay số may mắn và thực hiện Khóa Ngày khi hoàn tất
+        function drawLuckyNumbers() {
+            if (generatedCodes.length < 4) {
+                showModal("Lỗi", "Cần tạo ít nhất 4 mã để quay thưởng!", true);
+                return;
+            }
+            if (isDrawing || isLockedToday) return;
+            isDrawing = true;
+
+            emptyState.classList.add('hidden');
+            resultsContainer.classList.remove('hidden');
+            
+            const cards = ['card3rd', 'card2nd', 'card1st', 'cardSpecial'];
+            cards.forEach(id => {
+                const el = document.getElementById(id);
+                el.classList.remove('fade-in-up');
+                void el.offsetWidth; 
+                el.classList.add('fade-in-up');
+            });
+
+            document.getElementById('resSpecial').innerText = "quay...";
+            document.getElementById('res1st').innerText = "quay...";
+            document.getElementById('res2nd').innerText = "quay...";
+            document.getElementById('res3rd').innerText = "quay...";
+
+            // Chọn ra 4 người chiến thắng ngẫu nhiên không trùng lặp
+            const winners = [];
+            const usedIndices = new Set();
+            
+            while (winners.length < 4) {
+                const randomIndex = Math.floor(Math.random() * generatedCodes.length);
+                if (!usedIndices.has(randomIndex)) {
+                    usedIndices.add(randomIndex);
+                    winners.push(generatedCodes[randomIndex]);
+                }
+            }
+
+            // Chạy hiệu ứng delay công bố giải
+            setTimeout(() => { document.getElementById('res3rd').innerText = winners[3]; }, 1000);
+            setTimeout(() => { document.getElementById('res2nd').innerText = winners[2]; }, 1400);
+            setTimeout(() => { document.getElementById('res1st').innerText = winners[1]; }, 1800);
+            setTimeout(async () => { 
+                document.getElementById('resSpecial').innerText = winners[0]; 
+                isDrawing = false;
+                
+                // Lưu trạng thái và khóa toàn bộ hệ thống ngay khi có kết quả
+                await saveLockState(winners);
+
+                setTimeout(() => {
+                    showModal("🎉 Đã Khóa Hệ Thống 🎉", "Đã tìm ra 4 giải thưởng! Các nút thiết lập và quay số đã bị khóa cho đến ngày mai.");
+                }, 400);
+            }, 2200);
+        }
+
+        // Modal Custom
         function showModal(title, message, isError = false) {
             document.getElementById('modalTitle').innerText = title;
             document.getElementById('modalTitle').className = `text-xl font-bold mb-2 ${isError ? 'text-red-600' : 'text-blue-600'}`;
@@ -186,139 +546,14 @@
             document.getElementById('modal').classList.remove('flex');
         }
 
-        // 1. Chức năng tạo mã ngẫu nhiên (Hỗ trợ 6 chữ số)
-        function generateCodes() {
-            let amount = parseInt(inputAmount.value);
-            
-            // Validate số lượng
-            if (isNaN(amount) || amount <= 0) {
-                showModal("Lỗi Nhập Liệu", "Vui lòng nhập số lượng hợp lệ (lớn hơn 0).", true);
-                return;
-            }
-            if (amount > 1000000) {
-                amount = 1000000;
-                inputAmount.value = 1000000;
-                showModal("Giới hạn", "Vì định dạng 6 chữ số chỉ có tối đa 1.000.000 số khác nhau, hệ thống sẽ tự chỉnh thành 1.000.000 mã.");
-            }
+        // Bind các hàm vào đối tượng window để nút HTML inline gọi được
+        window.generateCodes = generateCodes;
+        window.exportToTxt = exportToTxt;
+        window.drawLuckyNumbers = drawLuckyNumbers;
+        window.closeModal = closeModal;
 
-            // Hiệu ứng nút tải
-            btnGenerate.innerHTML = `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Đang tạo...`;
-            btnGenerate.disabled = true;
-
-            // Sử dụng setTimeout để UI kịp cập nhật (spinner) trước khi vòng lặp nặng chạy
-            setTimeout(() => {
-                const codeSet = new Set();
-                
-                // Vòng lặp tạo số duy nhất 6 chữ số (từ 0 đến 999999)
-                while (codeSet.size < amount) {
-                    const randomNum = Math.floor(Math.random() * 1000000);
-                    const formattedCode = randomNum.toString().padStart(6, '0');
-                    codeSet.add(formattedCode);
-                }
-
-                generatedCodes = Array.from(codeSet);
-
-                // Cập nhật giao diện
-                btnExport.disabled = false;
-                btnDraw.disabled = false;
-                
-                statusBox.classList.remove('hidden');
-                statusBox.innerHTML = `
-                    <p class="font-bold mb-1">✅ Đã tạo thành công ${generatedCodes.length.toLocaleString()} mã.</p>
-                    <p class="text-xs text-gray-500">Định dạng: xxxxxx (Ví dụ: ${generatedCodes[0]}, ${generatedCodes[1] || '000000'}, ...)</p>
-                `;
-
-                // Khôi phục nút bấm
-                btnGenerate.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" /></svg> Tạo Lại Mã`;
-                btnGenerate.disabled = false;
-                
-                // Reset các giải về hiển thị trống
-                document.getElementById('resSpecial').innerText = "------";
-                document.getElementById('res1st').innerText = "------";
-                document.getElementById('res2nd').innerText = "------";
-                document.getElementById('res3rd').innerText = "------";
-                
-                // Ẩn bảng kết quả cũ nếu có
-                resultsContainer.classList.add('hidden');
-                emptyState.classList.remove('hidden');
-
-            }, 100);
-        }
-
-        // 2. Chức năng xuất file .txt
-        function exportToTxt() {
-            if (generatedCodes.length === 0) return;
-
-            // Nối mảng thành chuỗi, mỗi mã 1 dòng
-            const content = generatedCodes.join('\n');
-            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            
-            // Tạo thẻ a ảo để tải file
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `danh_sach_${generatedCodes.length}_ma_6_so.txt`;
-            document.body.appendChild(a);
-            a.click();
-            
-            // Dọn dẹp
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-        // 3. Chức năng quay 4 số may mắn
-        function drawLuckyNumbers() {
-            if (generatedCodes.length < 4) {
-                showModal("Lỗi", "Cần tạo ít nhất 4 mã để quay thưởng!", true);
-                return;
-            }
-            if (isDrawing) return;
-            isDrawing = true;
-
-            // Ẩn empty state và reset animation
-            emptyState.classList.add('hidden');
-            resultsContainer.classList.remove('hidden');
-            
-            const cards = ['card3rd', 'card2nd', 'card1st', 'cardSpecial'];
-            cards.forEach(id => {
-                const el = document.getElementById(id);
-                el.classList.remove('fade-in-up');
-                void el.offsetWidth; // Trigger reflow để reset animation
-                el.classList.add('fade-in-up');
-            });
-
-            // Gán chữ đang quay...
-            document.getElementById('resSpecial').innerText = "quay...";
-            document.getElementById('res1st').innerText = "quay...";
-            document.getElementById('res2nd').innerText = "quay...";
-            document.getElementById('res3rd').innerText = "quay...";
-
-            // Lấy 4 số ngẫu nhiên duy nhất
-            const winners = [];
-            const usedIndices = new Set();
-            
-            while (winners.length < 4) {
-                const randomIndex = Math.floor(Math.random() * generatedCodes.length);
-                if (!usedIndices.has(randomIndex)) {
-                    usedIndices.add(randomIndex);
-                    winners.push(generatedCodes[randomIndex]);
-                }
-            }
-
-            // Gắn số vào bảng với chút delay giả lập tăng phần kịch tính
-            setTimeout(() => { document.getElementById('res3rd').innerText = winners[3]; }, 1000);
-            setTimeout(() => { document.getElementById('res2nd').innerText = winners[2]; }, 1400);
-            setTimeout(() => { document.getElementById('res1st').innerText = winners[1]; }, 1800);
-            setTimeout(() => { 
-                document.getElementById('resSpecial').innerText = winners[0]; 
-                isDrawing = false;
-                
-                // Modal chúc mừng
-                setTimeout(() => {
-                    showModal("🎉 Hoàn Tất Quay Số 🎉", `Đã tìm ra 4 mã 6 số may mắn nhất trúng các giải Đặc biệt, Nhất, Nhì, Ba!`);
-                }, 500);
-            }, 2200);
-        }
+        // Bắt đầu khởi động ứng dụng
+        initApp();
     </script>
 </body>
 </html>
