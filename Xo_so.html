@@ -1,0 +1,324 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Quay Số May Mắn - 6 Chữ Số</title>
+    <!-- Sử dụng Tailwind CSS cho giao diện -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Thêm hiệu ứng lấp lánh cho giải đặc biệt */
+        @keyframes shine {
+            0% { background-position: -200% center; }
+            100% { background-position: 200% center; }
+        }
+        .prize-special {
+            background: linear-gradient(90deg, #ffde00, #ffb000, #ffde00);
+            background-size: 200% auto;
+            animation: shine 3s linear infinite;
+        }
+        
+        /* Hiệu ứng xuất hiện */
+        .fade-in-up {
+            animation: fadeInUp 0.6s ease-out forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Trì hoãn hiệu ứng cho từng giải */
+        .delay-1 { animation-delay: 0.2s; }
+        .delay-2 { animation-delay: 0.6s; }
+        .delay-3 { animation-delay: 1.0s; }
+        .delay-4 { animation-delay: 1.4s; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans text-gray-800">
+
+    <div class="container mx-auto px-4 py-8 max-w-5xl">
+        <!-- Header -->
+        <div class="text-center mb-10">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-red-600 tracking-tight uppercase shadow-sm">
+                🎉 Vòng Quay May Mắn 🎉
+            </h1>
+            <p class="text-gray-600 mt-3 text-lg">Hệ thống tạo mã ngẫu nhiên 6 số và quay số trúng thưởng</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Cột Trái: Bảng Điều Khiển -->
+            <div class="lg:col-span-1 bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2">Thiết Lập Mã</h2>
+                
+                <div class="mb-5">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Số lượng mã cần tạo (Tối đa 1.000.000)</label>
+                    <input type="number" id="inputAmount" value="10000" min="1" max="1000000" 
+                        class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all">
+                </div>
+
+                <button id="btnGenerate" onclick="generateCodes()" 
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-all flex justify-center items-center gap-2 mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                    </svg>
+                    Tạo Mã Ngẫu Nhiên (6 Số)
+                </button>
+
+                <button id="btnExport" onclick="exportToTxt()" disabled
+                    class="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg shadow-md transition-all flex justify-center items-center gap-2 mb-6">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                    Xuất File .txt
+                </button>
+
+                <div id="statusBox" class="hidden p-4 rounded-lg bg-blue-50 text-blue-700 text-sm border border-blue-200">
+                    <!-- Trạng thái sẽ hiện ở đây -->
+                </div>
+            </div>
+
+            <!-- Cột Phải: Bảng Quay Thưởng & Kết quả -->
+            <div class="lg:col-span-2">
+                <div class="bg-white p-6 md:p-8 rounded-2xl shadow-lg border border-gray-100 min-h-full">
+                    <div class="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
+                        <h2 class="text-3xl font-extrabold text-gray-800">Bảng Kết Quả</h2>
+                        <button id="btnDraw" onclick="drawLuckyNumbers()" disabled
+                            class="w-full sm:w-auto bg-red-600 hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-8 rounded-full shadow-lg transition-all transform hover:scale-105 active:scale-95 text-lg flex items-center justify-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Quay 4 Số May Mắn
+                        </button>
+                    </div>
+
+                    <!-- Bảng chứa giải thưởng -->
+                    <div id="resultsContainer" class="hidden grid grid-cols-1 md:grid-cols-2 gap-6">
+                        
+                        <!-- Giải Đặc Biệt -->
+                        <div id="cardSpecial" class="md:col-span-2 prize-special rounded-xl p-8 shadow-xl text-center border-2 border-yellow-400 fade-in-up delay-4">
+                            <h3 class="text-2xl font-bold text-red-700 uppercase tracking-widest mb-2">🏆 Giải Đặc Biệt 🏆</h3>
+                            <div class="text-6xl font-black text-gray-900 tracking-widest bg-white/60 inline-block px-8 py-4 rounded-lg shadow-inner">
+                                <span id="resSpecial">------</span>
+                            </div>
+                        </div>
+
+                        <!-- Giải Nhất -->
+                        <div id="card1st" class="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-6 shadow-md border border-red-200 text-center fade-in-up delay-3">
+                            <h3 class="text-xl font-bold text-red-600 uppercase mb-2">🥇 Giải Nhất</h3>
+                            <div class="text-4xl font-extrabold text-gray-800 tracking-widest">
+                                <span id="res1st">------</span>
+                            </div>
+                        </div>
+
+                        <!-- Giải Nhì -->
+                        <div id="card2nd" class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 shadow-md border border-blue-200 text-center fade-in-up delay-2">
+                            <h3 class="text-xl font-bold text-blue-600 uppercase mb-2">🥈 Giải Nhì</h3>
+                            <div class="text-4xl font-extrabold text-gray-800 tracking-widest">
+                                <span id="res2nd">------</span>
+                            </div>
+                        </div>
+
+                        <!-- Giải Ba -->
+                        <div id="card3rd" class="md:col-span-2 bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 shadow-md border border-green-200 text-center max-w-md mx-auto w-full fade-in-up delay-1">
+                            <h3 class="text-xl font-bold text-green-600 uppercase mb-2">🥉 Giải Ba</h3>
+                            <div class="text-4xl font-extrabold text-gray-800 tracking-widest">
+                                <span id="res3rd">------</span>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Lời nhắn khi chưa quay -->
+                    <div id="emptyState" class="flex flex-col items-center justify-center py-16 text-gray-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 mb-4 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <p class="text-lg">Hãy tạo mã và bấm "Quay Số" để xem kết quả!</p>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hộp thoại thông báo tự làm (Custom Modal) thay cho alert -->
+    <div id="modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-11/12 max-w-sm text-center">
+            <h3 id="modalTitle" class="text-xl font-bold mb-2 text-gray-800">Thông báo</h3>
+            <p id="modalMessage" class="text-gray-600 mb-6">Nội dung thông báo</p>
+            <button onclick="closeModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg w-full transition-colors">
+                Đóng
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Trạng thái ứng dụng
+        let generatedCodes = [];
+        let isDrawing = false;
+
+        // Các thành phần UI
+        const btnGenerate = document.getElementById('btnGenerate');
+        const btnExport = document.getElementById('btnExport');
+        const btnDraw = document.getElementById('btnDraw');
+        const statusBox = document.getElementById('statusBox');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const emptyState = document.getElementById('emptyState');
+        const inputAmount = document.getElementById('inputAmount');
+
+        // Hàm hiển thị thông báo
+        function showModal(title, message, isError = false) {
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('modalTitle').className = `text-xl font-bold mb-2 ${isError ? 'text-red-600' : 'text-blue-600'}`;
+            document.getElementById('modalMessage').innerText = message;
+            document.getElementById('modal').classList.remove('hidden');
+            document.getElementById('modal').classList.add('flex');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.add('hidden');
+            document.getElementById('modal').classList.remove('flex');
+        }
+
+        // 1. Chức năng tạo mã ngẫu nhiên (Hỗ trợ 6 chữ số)
+        function generateCodes() {
+            let amount = parseInt(inputAmount.value);
+            
+            // Validate số lượng
+            if (isNaN(amount) || amount <= 0) {
+                showModal("Lỗi Nhập Liệu", "Vui lòng nhập số lượng hợp lệ (lớn hơn 0).", true);
+                return;
+            }
+            if (amount > 1000000) {
+                amount = 1000000;
+                inputAmount.value = 1000000;
+                showModal("Giới hạn", "Vì định dạng 6 chữ số chỉ có tối đa 1.000.000 số khác nhau, hệ thống sẽ tự chỉnh thành 1.000.000 mã.");
+            }
+
+            // Hiệu ứng nút tải
+            btnGenerate.innerHTML = `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Đang tạo...`;
+            btnGenerate.disabled = true;
+
+            // Sử dụng setTimeout để UI kịp cập nhật (spinner) trước khi vòng lặp nặng chạy
+            setTimeout(() => {
+                const codeSet = new Set();
+                
+                // Vòng lặp tạo số duy nhất 6 chữ số (từ 0 đến 999999)
+                while (codeSet.size < amount) {
+                    const randomNum = Math.floor(Math.random() * 1000000);
+                    const formattedCode = randomNum.toString().padStart(6, '0');
+                    codeSet.add(formattedCode);
+                }
+
+                generatedCodes = Array.from(codeSet);
+
+                // Cập nhật giao diện
+                btnExport.disabled = false;
+                btnDraw.disabled = false;
+                
+                statusBox.classList.remove('hidden');
+                statusBox.innerHTML = `
+                    <p class="font-bold mb-1">✅ Đã tạo thành công ${generatedCodes.length.toLocaleString()} mã.</p>
+                    <p class="text-xs text-gray-500">Định dạng: xxxxxx (Ví dụ: ${generatedCodes[0]}, ${generatedCodes[1] || '000000'}, ...)</p>
+                `;
+
+                // Khôi phục nút bấm
+                btnGenerate.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" /></svg> Tạo Lại Mã`;
+                btnGenerate.disabled = false;
+                
+                // Reset các giải về hiển thị trống
+                document.getElementById('resSpecial').innerText = "------";
+                document.getElementById('res1st').innerText = "------";
+                document.getElementById('res2nd').innerText = "------";
+                document.getElementById('res3rd').innerText = "------";
+                
+                // Ẩn bảng kết quả cũ nếu có
+                resultsContainer.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+
+            }, 100);
+        }
+
+        // 2. Chức năng xuất file .txt
+        function exportToTxt() {
+            if (generatedCodes.length === 0) return;
+
+            // Nối mảng thành chuỗi, mỗi mã 1 dòng
+            const content = generatedCodes.join('\n');
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            
+            // Tạo thẻ a ảo để tải file
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `danh_sach_${generatedCodes.length}_ma_6_so.txt`;
+            document.body.appendChild(a);
+            a.click();
+            
+            // Dọn dẹp
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // 3. Chức năng quay 4 số may mắn
+        function drawLuckyNumbers() {
+            if (generatedCodes.length < 4) {
+                showModal("Lỗi", "Cần tạo ít nhất 4 mã để quay thưởng!", true);
+                return;
+            }
+            if (isDrawing) return;
+            isDrawing = true;
+
+            // Ẩn empty state và reset animation
+            emptyState.classList.add('hidden');
+            resultsContainer.classList.remove('hidden');
+            
+            const cards = ['card3rd', 'card2nd', 'card1st', 'cardSpecial'];
+            cards.forEach(id => {
+                const el = document.getElementById(id);
+                el.classList.remove('fade-in-up');
+                void el.offsetWidth; // Trigger reflow để reset animation
+                el.classList.add('fade-in-up');
+            });
+
+            // Gán chữ đang quay...
+            document.getElementById('resSpecial').innerText = "quay...";
+            document.getElementById('res1st').innerText = "quay...";
+            document.getElementById('res2nd').innerText = "quay...";
+            document.getElementById('res3rd').innerText = "quay...";
+
+            // Lấy 4 số ngẫu nhiên duy nhất
+            const winners = [];
+            const usedIndices = new Set();
+            
+            while (winners.length < 4) {
+                const randomIndex = Math.floor(Math.random() * generatedCodes.length);
+                if (!usedIndices.has(randomIndex)) {
+                    usedIndices.add(randomIndex);
+                    winners.push(generatedCodes[randomIndex]);
+                }
+            }
+
+            // Gắn số vào bảng với chút delay giả lập tăng phần kịch tính
+            setTimeout(() => { document.getElementById('res3rd').innerText = winners[3]; }, 1000);
+            setTimeout(() => { document.getElementById('res2nd').innerText = winners[2]; }, 1400);
+            setTimeout(() => { document.getElementById('res1st').innerText = winners[1]; }, 1800);
+            setTimeout(() => { 
+                document.getElementById('resSpecial').innerText = winners[0]; 
+                isDrawing = false;
+                
+                // Modal chúc mừng
+                setTimeout(() => {
+                    showModal("🎉 Hoàn Tất Quay Số 🎉", `Đã tìm ra 4 mã 6 số may mắn nhất trúng các giải Đặc biệt, Nhất, Nhì, Ba!`);
+                }, 500);
+            }, 2200);
+        }
+    </script>
+</body>
+</html>
