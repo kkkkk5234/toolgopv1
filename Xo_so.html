@@ -87,13 +87,14 @@
                     Xuất File .txt
                 </button>
 
+                <!-- Status Box thông minh báo hiệu chế độ -->
                 <div id="statusBox" class="p-4 rounded-lg bg-blue-50 text-blue-700 text-sm border border-blue-200">
                     <div class="flex items-center gap-2">
                         <svg class="animate-spin h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        <span>Đang đồng bộ hóa trạng thái bảo mật...</span>
+                        <span id="statusMessage">Đang khởi tạo cấu hình hệ thống...</span>
                     </div>
                 </div>
             </div>
@@ -102,7 +103,15 @@
             <div class="lg:col-span-2">
                 <div class="bg-white p-6 md:p-8 rounded-2xl shadow-lg border border-gray-100 min-h-full">
                     <div class="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
-                        <h2 class="text-3xl font-extrabold text-gray-800">Bảng Kết Quả</h2>
+                        <div class="flex flex-col">
+                            <h2 class="text-3xl font-extrabold text-gray-800">Bảng Kết Quả</h2>
+                            <!-- Tag hiển thị chế độ đồng bộ -->
+                            <div class="mt-1">
+                                <span id="syncModeTag" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                    Đang xác định chế độ...
+                                </span>
+                            </div>
+                        </div>
                         <button id="btnDraw" onclick="drawLuckyNumbers()" disabled
                             class="w-full sm:w-auto bg-red-600 hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 px-8 rounded-full shadow-lg transition-all transform hover:scale-105 active:scale-95 text-lg flex items-center justify-center gap-2">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -174,18 +183,12 @@
         </div>
     </div>
 
-    <!-- Tích hợp Firebase và các hàm xử lý logic -->
+    <!-- Tích hợp Firebase động và Fallback Local Storage -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Cấu hình Firebase
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'lucky-draw-6-digit-v2';
+        // Các tài nguyên SDK Firebase sẽ được tải động nếu cấu hình tồn tại
+        let app, auth, db;
+        let appId = "lucky-draw-6-digit-v2";
+        let isFirebaseActive = false;
 
         // Trạng thái ứng dụng
         let generatedCodes = [];
@@ -199,12 +202,14 @@
         const btnDraw = document.getElementById('btnDraw');
         const inputAmount = document.getElementById('inputAmount');
         const statusBox = document.getElementById('statusBox');
+        const statusMessage = document.getElementById('statusMessage');
         const resultsContainer = document.getElementById('resultsContainer');
         const emptyState = document.getElementById('emptyState');
         const lockBanner = document.getElementById('lockBanner');
         const unlockDateText = document.getElementById('unlockDateText');
+        const syncModeTag = document.getElementById('syncModeTag');
 
-        // Hàm lấy chuỗi ngày hiện tại (YYYY-MM-DD) theo múi giờ địa phương
+        // Hàm lấy chuỗi ngày hiện tại (YYYY-MM-DD) theo múi giờ thiết bị
         function getTodayDateString() {
             const today = new Date();
             const yyyy = today.getFullYear();
@@ -223,97 +228,169 @@
             return `${dd}/${mm}/${yyyy}`;
         }
 
-        // Khởi chạy hệ thống Auth
+        // Khởi động ứng dụng kiểm tra môi trường
         async function initApp() {
+            let configExists = false;
+            
+            // Bước 1: Kiểm tra xem biến môi trường Firebase của nền tảng Sandbox có tồn tại không
             try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
+                if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                    configExists = true;
                 }
-            } catch (err) {
-                console.error("Lỗi xác thực hệ thống:", err);
-                statusBox.innerHTML = `<span class="text-red-600 font-semibold">⚠️ Không thể đồng bộ trạng thái bảo mật trực tuyến.</span>`;
+            } catch (e) {
+                configExists = false;
+            }
+
+            if (configExists) {
+                // Sử dụng Chế độ Đám mây (Firebase)
+                try {
+                    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
+                    const { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
+                    const { getFirestore, doc, setDoc, getDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+
+                    const firebaseConfig = JSON.parse(__firebase_config);
+                    app = initializeApp(firebaseConfig);
+                    auth = getAuth(app);
+                    db = getFirestore(app);
+                    if (typeof __app_id !== 'undefined') appId = __app_id;
+                    isFirebaseActive = true;
+
+                    syncModeTag.innerText = "☁️ Chế độ Đám mây (Đồng bộ)";
+                    syncModeTag.className = "mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800";
+
+                    // Đăng nhập Firebase
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+
+                    // Theo dõi trạng thái tài khoản
+                    onAuthStateChanged(auth, async (user) => {
+                        if (user) {
+                            currentUser = user;
+                            await checkLockStatus();
+                        }
+                    });
+                } catch (err) {
+                    console.error("Lỗi khởi tạo Firebase, chuyển qua Local Storage:", err);
+                    setupLocalStorageFallback();
+                }
+            } else {
+                // Không có cấu hình Firebase -> Chuyển qua lưu trữ Local Storage trên trình duyệt (Dành cho GitHub Pages)
+                setupLocalStorageFallback();
             }
         }
 
-        // Theo dõi trạng thái tài khoản
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                currentUser = user;
-                await checkLockStatus();
-            }
-        });
+        // Khởi tạo trạng thái thiết bị ngoại tuyến (Local Storage)
+        function setupLocalStorageFallback() {
+            isFirebaseActive = false;
+            syncModeTag.innerText = "💾 Chế độ Thiết bị (Ngoại tuyến)";
+            syncModeTag.className = "mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800";
+            checkLockStatusLocal();
+        }
 
-        // Hàm kiểm tra trạng thái khóa từ Firestore (Áp dụng đúng Rule 1 và Rule 3)
+        // --- HÀM KIỂM TRA TRẠNG THÁI KHÓA ---
         async function checkLockStatus() {
-            if (!currentUser) return;
+            if (!isFirebaseActive) {
+                checkLockStatusLocal();
+                return;
+            }
 
             const todayStr = getTodayDateString();
-            const docPath = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'state', 'drawState');
-
             try {
+                const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                const docPath = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'state', 'drawState');
                 const docSnap = await getDoc(docPath);
+                
                 if (docSnap.exists()) {
                     const data = docSnap.data();
-                    
-                    // Nếu ngày đã khóa trùng khớp với ngày hôm nay
                     if (data.lastDrawDate === todayStr && data.isLocked) {
                         isLockedToday = true;
                         generatedCodes = data.codes || [];
                         applyLockedUI(data.winners || []);
-                    } else {
-                        isLockedToday = false;
-                        applyUnlockedUI();
+                        return;
                     }
-                } else {
-                    isLockedToday = false;
-                    applyUnlockedUI();
                 }
+                isLockedToday = false;
+                applyUnlockedUI();
             } catch (error) {
-                console.error("Lỗi khi tải dữ liệu khóa:", error);
-                applyUnlockedUI(); // Fallback về trạng thái mở để người dùng sử dụng được nếu mạng lỗi
+                console.error("Lỗi kết nối đám mây, sử dụng local backup:", error);
+                checkLockStatusLocal();
             }
         }
 
-        // Lưu trạng thái khóa vào Firestore
-        async function saveLockState(winnersList) {
-            if (!currentUser) return;
-
+        // Kiểm tra khóa qua Local Storage (GitHub Pages / Máy cục bộ)
+        function checkLockStatusLocal() {
             const todayStr = getTodayDateString();
-            const docPath = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'state', 'drawState');
+            const localDataStr = localStorage.getItem('drawState_6digit');
 
-            // Chỉ lưu trữ mã lên đám mây nếu dung lượng nhỏ hơn 50.000 mã
-            let codesToPersist = [];
-            let isPersisted = false;
-            if (generatedCodes.length <= 50000) {
-                codesToPersist = generatedCodes;
-                isPersisted = true;
-            }
-
-            try {
-                await setDoc(docPath, {
-                    lastDrawDate: todayStr,
-                    isLocked: true,
-                    winners: winnersList,
-                    codes: codesToPersist,
-                    isCodesPersisted: isPersisted,
-                    timestamp: new Date().toISOString()
-                });
-                
-                isLockedToday = true;
-                applyLockedUI(winnersList);
-
-                if (!isPersisted) {
-                    showModal(
-                        "Lưu ý xuất file", 
-                        "Do danh sách mã lớn hơn 50.000 mã, chúng tôi chỉ khóa quyền quay số chứ không lưu trữ danh sách mã lên đám mây để tránh quá dung lượng. Vui lòng bấm 'Xuất file .txt' ngay bây giờ trước khi đóng trình duyệt!"
-                    );
+            if (localDataStr) {
+                try {
+                    const data = JSON.parse(localDataStr);
+                    if (data.lastDrawDate === todayStr && data.isLocked) {
+                        isLockedToday = true;
+                        generatedCodes = data.codes || [];
+                        applyLockedUI(data.winners || []);
+                        return;
+                    }
+                } catch (e) {
+                    console.error("Lỗi giải mã cấu hình lưu trữ cục bộ:", e);
                 }
-            } catch (error) {
-                console.error("Lỗi khi lưu trạng thái khóa:", error);
-                showModal("Lỗi Đám Mây", "Không thể đồng bộ trạng thái khóa. Bạn chỉ có thể tải file lúc này.", true);
             }
+            isLockedToday = false;
+            applyUnlockedUI();
+        }
+
+        // --- HÀM LƯU TRẠNG THÁI KHÓA ---
+        async function saveLockState(winnersList) {
+            const todayStr = getTodayDateString();
+            
+            // Lưu cục bộ trước để luôn an toàn và cực nhanh
+            const localState = {
+                lastDrawDate: todayStr,
+                isLocked: true,
+                winners: winnersList,
+                codes: generatedCodes
+            };
+            localStorage.setItem('drawState_6digit', JSON.stringify(localState));
+
+            // Lưu đám mây nếu Firebase hoạt động
+            if (isFirebaseActive && currentUser) {
+                try {
+                    const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                    const docPath = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'state', 'drawState');
+                    
+                    let codesToPersist = [];
+                    let isPersisted = false;
+                    // Giới hạn số lượng lưu đám mây < 50,000 mã để tránh vượt 1MB Firestore limit
+                    if (generatedCodes.length <= 50000) {
+                        codesToPersist = generatedCodes;
+                        isPersisted = true;
+                    }
+
+                    await setDoc(docPath, {
+                        lastDrawDate: todayStr,
+                        isLocked: true,
+                        winners: winnersList,
+                        codes: codesToPersist,
+                        isCodesPersisted: isPersisted,
+                        timestamp: new Date().toISOString()
+                    });
+
+                    if (!isPersisted) {
+                        showModal(
+                            "Xuất file ngay", 
+                            "Do bạn tạo số lượng mã quá lớn, hệ thống chỉ khóa lượt trên đám mây mà không lưu mã lên máy chủ. Bạn vui lòng bấm nút 'Xuất File .txt' ngay bây giờ để lưu trữ kết quả nhé!"
+                        );
+                    }
+                } catch (error) {
+                    console.error("Lỗi đồng bộ đám mây, dữ liệu vẫn được lưu trên thiết bị:", error);
+                }
+            }
+
+            isLockedToday = true;
+            applyLockedUI(winnersList);
         }
 
         // Áp dụng Giao diện khi bị KHÓA
@@ -339,16 +416,16 @@
                 statusBox.classList.remove('hidden', 'bg-blue-50', 'text-blue-700', 'border-blue-200');
                 statusBox.classList.add('bg-amber-50', 'text-amber-800', 'border-amber-200');
                 statusBox.innerHTML = `
-                    <p class="font-bold mb-1">🔒 Hệ thống đang khóa lượt của ngày hôm nay.</p>
-                    <p class="text-xs text-gray-500">Đã khôi phục ${generatedCodes.length.toLocaleString()} mã đã tạo để bạn xuất file.</p>
+                    <p class="font-bold mb-1">🔒 Hệ thống đang khóa lượt quay hôm nay.</p>
+                    <p class="text-xs text-gray-500">Đã khôi phục ${generatedCodes.length.toLocaleString()} mã đã tạo. Hãy xuất file dữ liệu!</p>
                 `;
             } else {
                 btnExport.disabled = true;
                 statusBox.classList.remove('hidden', 'bg-blue-50', 'text-blue-700', 'border-blue-200');
                 statusBox.classList.add('bg-amber-50', 'text-amber-800', 'border-amber-200');
                 statusBox.innerHTML = `
-                    <p class="font-bold mb-1">🔒 Hệ thống đang khóa lượt của ngày hôm nay.</p>
-                    <p class="text-xs text-red-500">Danh sách mã hôm nay không khả dụng trực tuyến. Vui lòng quay lại vào ngày mai.</p>
+                    <p class="font-bold mb-1">🔒 Hệ thống đang khóa lượt quay hôm nay.</p>
+                    <p class="text-xs text-red-500">Danh sách mã hôm nay không khả dụng trên trình duyệt này.</p>
                 `;
             }
 
@@ -436,7 +513,7 @@
                 
                 statusBox.classList.remove('hidden');
                 statusBox.innerHTML = `
-                    <p class="font-bold mb-1">✅ Đã tạo thành công ${generatedCodes.length.toLocaleString()} mã.</p>
+                    <p class="font-bold mb-1 text-green-700">✅ Đã tạo thành công ${generatedCodes.length.toLocaleString()} mã.</p>
                     <p class="text-xs text-gray-500">Định dạng: xxxxxx (Ví dụ: ${generatedCodes[0]}, ${generatedCodes[1] || '000000'}, ...)</p>
                 `;
 
